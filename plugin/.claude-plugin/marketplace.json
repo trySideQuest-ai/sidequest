@@ -1,0 +1,15 @@
+{
+  "name": "sidequest-plugin",
+  "plugins": [
+    {
+      "name": "sidequest",
+      "description": "SideQuest — contextual quests inside your AI coding agent",
+      "version": "0.1.0",
+      "source": "./",
+      "author": {
+        "name": "SideQuest AI",
+        "email": "hello@trysidequest.ai"
+      }
+    }
+  ]
+}

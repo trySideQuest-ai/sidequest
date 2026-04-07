@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# SideQuest SessionStart Hook — nudges user to login if no token
+
+CONFIG_FILE="${CLAUDE_PLUGIN_DATA}/config.json"
+
+if [ -f "$CONFIG_FILE" ]; then
+  TOKEN=$(grep -o '"token":\s*"[^"]*"' "$CONFIG_FILE" | head -1 | sed 's/"token":\s*"//' | sed 's/"$//')
+  if [ -n "$TOKEN" ]; then
+    exit 0
+  fi
+fi
+
+cat <<'ENDJSON'
+{"additionalContext":"SideQuest plugin installed but not logged in. In your first reply, let the user know: \"SideQuest plugin is installed but not authenticated. Run /sidequest:login to set up.\""}
+ENDJSON
