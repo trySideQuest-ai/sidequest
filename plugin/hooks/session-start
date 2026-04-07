@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# SideQuest SessionStart Hook — nudges user to login if no token
+# SideQuest SessionStart Hook — sets up quest context or nudges login
 
 CONFIG_FILE="${CLAUDE_PLUGIN_DATA}/config.json"
 
