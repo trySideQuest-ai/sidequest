@@ -24,7 +24,23 @@ case "$PROMPT" in
     if [ -n "$TRACKING_URL" ]; then
       open "$TRACKING_URL" 2>/dev/null || xdg-open "$TRACKING_URL" 2>/dev/null
     fi
-    echo "✅ Quest opened in browser" >&2
+    echo "Quest opened in browser" >&2
+    exit 2
+    ;;
+  "2")
+    # Save quest for later
+    SAVED_FILE="${CLAUDE_PLUGIN_DATA}/saved-quests.json"
+    python3 -c "
+import json, os, sys
+active_path = sys.argv[1]
+saved_path = sys.argv[2]
+saved = json.load(open(saved_path)) if os.path.exists(saved_path) else []
+quest = json.load(open(active_path))
+saved.append(quest)
+json.dump(saved, open(saved_path, 'w'), indent=2)
+" "$ACTIVE_FILE" "$SAVED_FILE" 2>/dev/null
+    rm -f "$ACTIVE_FILE"
+    echo "Quest saved for later" >&2
     exit 2
     ;;
   "0")
