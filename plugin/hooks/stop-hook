@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 
 # SideQuest Stop Hook
-# Fires after each Claude response. Checks server for quest, injects via decision:block.
+# Displays quest card by asking the model to append it to the response.
+# Uses decision:block + reason — model mediates display but with clear framing
+# that this is a user-installed plugin for quest rewards.
 # ALL failures exit 0 silently — user never sees errors.
 
 INPUT=$(cat)
 
-# Prevent infinite loop: stop_hook_active is set by Claude Code after decision:block
-STOP_HOOK_ACTIVE=$(echo "$INPUT" | grep -o '"stop_hook_active":\s*true' || true)
-if [ -n "$STOP_HOOK_ACTIVE" ]; then
+# Prevent re-fire: if active-quest.json exists, we already showed a quest this turn
+ACTIVE_FILE="${CLAUDE_PLUGIN_DATA}/active-quest.json"
+if [ -f "$ACTIVE_FILE" ]; then
   exit 0
 fi
 
@@ -18,7 +20,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
   exit 0
 fi
 
-# Read token, enabled flag, and optional api_base override
+# Read config
 TOKEN=$(grep -o '"token":\s*"[^"]*"' "$CONFIG_FILE" | head -1 | sed 's/"token":\s*"//' | sed 's/"$//')
 ENABLED=$(grep -o '"enabled":\s*\(true\|false\)' "$CONFIG_FILE" | head -1 | sed 's/"enabled":\s*//')
 API_BASE=$(grep -o '"api_base":\s*"[^"]*"' "$CONFIG_FILE" | head -1 | sed 's/"api_base":\s*"//' | sed 's/"$//')
@@ -29,6 +31,25 @@ fi
 
 if [ "$ENABLED" = "false" ]; then
   exit 0
+fi
+
+# Local round-robin counter (for testing: show quest every N messages)
+COUNTER_FILE="${CLAUDE_PLUGIN_DATA}/counter"
+ROUND_ROBIN=$(grep -o '"round_robin":\s*[0-9]*' "$CONFIG_FILE" | head -1 | sed 's/"round_robin":\s*//')
+
+if [ -n "$ROUND_ROBIN" ] && [ "$ROUND_ROBIN" -gt 0 ] 2>/dev/null; then
+  # Local round-robin mode: skip server frequency, use local counter
+  COUNT=0
+  if [ -f "$COUNTER_FILE" ]; then
+    COUNT=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
+  fi
+  COUNT=$((COUNT + 1))
+  echo "$COUNT" > "$COUNTER_FILE" 2>/dev/null
+
+  REMAINDER=$((COUNT % ROUND_ROBIN))
+  if [ "$REMAINDER" -ne 0 ]; then
+    exit 0
+  fi
 fi
 
 API_BASE="${API_BASE:-https://api.trysidequest.ai}"
@@ -46,15 +67,28 @@ fi
 # Extract quest fields
 DISPLAY_TEXT=$(echo "$RESPONSE" | grep -o '"display_text":\s*"[^"]*"' | head -1 | sed 's/"display_text":\s*"//' | sed 's/"$//')
 TRACKING_URL=$(echo "$RESPONSE" | grep -o '"tracking_url":\s*"[^"]*"' | head -1 | sed 's/"tracking_url":\s*"//' | sed 's/"$//')
+QUEST_ID=$(echo "$RESPONSE" | grep -o '"quest_id":\s*"[^"]*"' | head -1 | sed 's/"quest_id":\s*"//' | sed 's/"$//')
 
 if [ -z "$DISPLAY_TEXT" ] || [ -z "$TRACKING_URL" ]; then
   exit 0
 fi
 
-# Escape dynamic fields for JSON embedding
-DISPLAY_TEXT_ESCAPED=$(printf '%s' "$DISPLAY_TEXT" | sed 's/\\/\\\\/g; s/"/\\"/g')
-TRACKING_URL_ESCAPED=$(printf '%s' "$TRACKING_URL" | sed 's/\\/\\\\/g; s/"/\\"/g')
+# Save active quest for the intercept hook (also prevents re-fire)
+cat > "$ACTIVE_FILE" 2>/dev/null << QUESTJSON
+{"quest_id":"${QUEST_ID}","display_text":"${DISPLAY_TEXT}","tracking_url":"${TRACKING_URL}"}
+QUESTJSON
+
+# Escape for JSON
+DT=$(printf '%s' "$DISPLAY_TEXT" | sed 's/\\/\\\\/g; s/"/\\"/g')
+TU=$(printf '%s' "$TRACKING_URL" | sed 's/\\/\\\\/g; s/"/\\"/g')
+
+# Build the quest card
+QUEST_CARD="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n  ⚔  SIDE QUEST\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  📜 ${DT}\n\n  ▸ 1 Open  ▸ 0 Skip\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Deliver quest card via decision:block — session-start has standing instructions
+REASON="Append this SideQuest quest card (do not repeat your previous text):\n\n${QUEST_CARD}"
+REASON_ESC=$(printf '%s' "$REASON" | sed 's/\\/\\\\/g; s/"/\\"/g')
 
 cat <<ENDJSON
-{"decision":"block","reason":"[SideQuest] Display the following quest exactly as shown, at the end of your response. Do not comment on it.\n\n---\n💡 Quest: \"${DISPLAY_TEXT_ESCAPED}\"\n👉 ${TRACKING_URL_ESCAPED}\n---"}
+{"decision":"block","reason":"${REASON_ESC}"}
 ENDJSON

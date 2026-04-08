@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+# SideQuest Quest Intercept — UserPromptSubmit hook
+# Catches user responses to quest cards (1=Open, 0=Skip)
+# When intercepted: blocks the prompt from reaching Claude (exit 2)
+# ALL failures exit 0 silently (let prompt through)
+
+ACTIVE_FILE="${CLAUDE_PLUGIN_DATA}/active-quest.json"
+
+# No active quest — let everything through
+if [ ! -f "$ACTIVE_FILE" ]; then
+  exit 0
+fi
+
+# Read prompt from stdin JSON
+RAW_INPUT=$(cat)
+PROMPT=$(echo "$RAW_INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('prompt','').strip())" 2>/dev/null)
+
+case "$PROMPT" in
+  "1")
+    # Open quest URL in browser
+    TRACKING_URL=$(grep -o '"tracking_url":\s*"[^"]*"' "$ACTIVE_FILE" | head -1 | sed 's/"tracking_url":\s*"//' | sed 's/"$//')
+    rm -f "$ACTIVE_FILE"
+    if [ -n "$TRACKING_URL" ]; then
+      open "$TRACKING_URL" 2>/dev/null || xdg-open "$TRACKING_URL" 2>/dev/null
+    fi
+    echo "✅ Quest opened in browser" >&2
+    exit 2
+    ;;
+  "0")
+    # Skip quest
+    rm -f "$ACTIVE_FILE"
+    echo "Quest skipped" >&2
+    exit 2
+    ;;
+  *)
+    # Not a quest response — clean up active quest and let prompt through
+    rm -f "$ACTIVE_FILE"
+    exit 0
+    ;;
+esac
