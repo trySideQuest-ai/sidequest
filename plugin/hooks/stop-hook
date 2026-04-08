@@ -68,6 +68,8 @@ fi
 DISPLAY_TEXT=$(echo "$RESPONSE" | grep -o '"display_text":\s*"[^"]*"' | head -1 | sed 's/"display_text":\s*"//' | sed 's/"$//')
 TRACKING_URL=$(echo "$RESPONSE" | grep -o '"tracking_url":\s*"[^"]*"' | head -1 | sed 's/"tracking_url":\s*"//' | sed 's/"$//')
 QUEST_ID=$(echo "$RESPONSE" | grep -o '"quest_id":\s*"[^"]*"' | head -1 | sed 's/"quest_id":\s*"//' | sed 's/"$//')
+SPONSOR_NAME=$(echo "$RESPONSE" | grep -o '"sponsor_name":\s*"[^"]*"' | head -1 | sed 's/"sponsor_name":\s*"//' | sed 's/"$//')
+SPONSOR_TAGLINE=$(echo "$RESPONSE" | grep -o '"sponsor_tagline":\s*"[^"]*"' | head -1 | sed 's/"sponsor_tagline":\s*"//' | sed 's/"$//')
 
 if [ -z "$DISPLAY_TEXT" ] || [ -z "$TRACKING_URL" ]; then
   exit 0
@@ -75,9 +77,16 @@ fi
 
 # Save active quest for the intercept hook (also prevents re-fire)
 cat > "$ACTIVE_FILE" 2>/dev/null << QUESTJSON
-{"quest_id":"${QUEST_ID}","display_text":"${DISPLAY_TEXT}","tracking_url":"${TRACKING_URL}"}
+{"quest_id":"${QUEST_ID}","display_text":"${DISPLAY_TEXT}","tracking_url":"${TRACKING_URL}","sponsor_name":"${SPONSOR_NAME}","sponsor_tagline":"${SPONSOR_TAGLINE}"}
 QUESTJSON
 
 # Generate scroll card and output hook JSON via Python
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-python3 "${SCRIPT_DIR}/quest-card.py" "$DISPLAY_TEXT" --reward 250 --json 2>/dev/null || exit 0
+SPONSOR_ARGS=""
+if [ -n "$SPONSOR_NAME" ]; then
+  SPONSOR_ARGS="--sponsor \"$SPONSOR_NAME\""
+  if [ -n "$SPONSOR_TAGLINE" ]; then
+    SPONSOR_ARGS="$SPONSOR_ARGS --tagline \"$SPONSOR_TAGLINE\""
+  fi
+fi
+eval python3 "${SCRIPT_DIR}/quest-card.py" "\"$DISPLAY_TEXT\"" --reward 250 --json $SPONSOR_ARGS 2>/dev/null || exit 0
