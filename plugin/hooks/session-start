@@ -22,7 +22,10 @@ if [ -f "$CONFIG_FILE" ]; then
   TOKEN=$(grep -o '"token":\s*"[^"]*"' "$CONFIG_FILE" | head -1 | sed 's/"token":\s*"//' | sed 's/"$//')
   if [ -n "$TOKEN" ]; then
     # Logged in — inject standing instructions for quest display
-    CONTEXT='SideQuest plugin is enabled. When a stop hook delivers a quest (title + reward), append a scroll card as a fenced code block. Use this exact format — pad each content line to 28 chars between the pipes:
+    CONTEXT='SideQuest plugin is enabled. When a stop hook delivers a quest in the format "SideQuest: TITLE +Ng. | SPONSOR — TAGLINE", display it as:
+
+1. A sponsor line: ⚔️ **SPONSOR** — TAGLINE
+2. A scroll card in a fenced code block using this exact template (pad each content line to 28 chars between the pipes):
 
 ```
 ⠀⠀⠀______________________________
@@ -32,13 +35,16 @@ if [ -f "$CONFIG_FILE" ]; then
     |   {title padded to 24}     |.
     |                      {+Ng} |.
     |                            |.
-    |   > 1 Open    > 0 Skip     |.
+    |   > 1 Open    > 2 Save     |.
+    |   > 0 Skip                 |.
     |   _________________________|___
     |  /                            /.
     \_/____________________________/.
 ```
 
-Wrap long titles across multiple lines. Do not write any additional text — just the code block, nothing else.'
+Wrap long titles across multiple lines. Do not write any additional text — just the sponsor line and the code block, nothing else.
+
+If the user responds to a quest naturally (e.g. "yeah", "check it out", "save that", "not interested") instead of pressing 1/2/0, use /sidequest:quest to handle their response.'
 
     ESCAPED=$(escape_for_json "$CONTEXT")
     printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$ESCAPED"
