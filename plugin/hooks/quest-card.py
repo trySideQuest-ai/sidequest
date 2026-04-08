@@ -169,7 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('--reward', type=int, help='Gold reward amount')
     parser.add_argument('--design', default='scroll', choices=DESIGNS.keys())
     parser.add_argument('--json', action='store_true', help='Output full hook JSON')
-    parser.add_argument('--prior-text', help='Model text already written (to prevent repetition)')
+
     parser.add_argument('--test', action='store_true', help='Run test suite')
     args = parser.parse_args()
 
@@ -208,11 +208,7 @@ if __name__ == '__main__':
         if args.json:
             import json
             reward_info = f' +{args.reward:,}g' if args.reward else ''
-            if args.prior_text:
-                anti_repeat = f' You already said: "{args.prior_text}" — do not repeat that.'
-            else:
-                anti_repeat = ''
-            reason = f"SideQuest: {args.title}{reward_info}.{anti_repeat}"
+            reason = f"SideQuest: {args.title}{reward_info}."
             print(json.dumps({"decision": "block", "reason": reason}))
         else:
             print(card)

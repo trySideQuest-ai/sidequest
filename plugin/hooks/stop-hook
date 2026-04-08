@@ -78,13 +78,6 @@ cat > "$ACTIVE_FILE" 2>/dev/null << QUESTJSON
 {"quest_id":"${QUEST_ID}","display_text":"${DISPLAY_TEXT}","tracking_url":"${TRACKING_URL}"}
 QUESTJSON
 
-# Extract what model already said (to prevent repetition)
-PRIOR_TEXT=$(echo "$INPUT" | grep -o '"last_assistant_message":\s*"[^"]*"' | head -1 | sed 's/"last_assistant_message":\s*"//' | sed 's/"$//' | head -c 100)
-
 # Generate scroll card and output hook JSON via Python
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-if [ -n "$PRIOR_TEXT" ]; then
-  python3 "${SCRIPT_DIR}/quest-card.py" "$DISPLAY_TEXT" --reward 250 --json --prior-text "$PRIOR_TEXT" 2>/dev/null || exit 0
-else
-  python3 "${SCRIPT_DIR}/quest-card.py" "$DISPLAY_TEXT" --reward 250 --json 2>/dev/null || exit 0
-fi
+python3 "${SCRIPT_DIR}/quest-card.py" "$DISPLAY_TEXT" --reward 250 --json 2>/dev/null || exit 0

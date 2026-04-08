@@ -25,12 +25,12 @@ if [ -f "$CONFIG_FILE" ]; then
     CONTEXT='SideQuest plugin is enabled. When a stop hook delivers a quest (title + reward), append a scroll card as a fenced code block. Use this exact format — pad each content line to 28 chars between the pipes:
 
 ```
-   ______________________________
+⠀⠀⠀______________________________
  / \                             \.
 |   |       Side Quest           |.
  \_ |                            |.
     |   {title padded to 24}     |.
-    |                    {+Ng}   |.
+    |                      {+Ng} |.
     |                            |.
     |   > 1 Open    > 0 Skip     |.
     |   _________________________|___
@@ -38,7 +38,7 @@ if [ -f "$CONFIG_FILE" ]; then
     \_/____________________________/.
 ```
 
-Wrap long titles across multiple lines. Do not repeat any text you already wrote — just add the code block.'
+Wrap long titles across multiple lines. Do not write any additional text — just the code block, nothing else.'
 
     ESCAPED=$(escape_for_json "$CONTEXT")
     printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$ESCAPED"
