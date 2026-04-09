@@ -5,6 +5,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var windowManager: WindowManager?
     private var ipcListener: IPCListener?
     private var sleepWorkspaceObserver: NSObjectProtocol?
+    private var eventQueue: EventQueue?
+    private var eventSyncManager: EventSyncManager?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         do {
@@ -23,9 +25,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             apiClient = APIClient(apiBaseURL: apiBase, bearerToken: testToken)
 
+            // Initialize EventQueue and EventSyncManager
+            eventQueue = EventQueue()
+            windowManager?.setEventQueue(eventQueue!)
+
+            eventSyncManager = EventSyncManager(apiClient: apiClient!, eventQueue: eventQueue!)
+            eventSyncManager?.startPeriodicSync()
+            ErrorHandler.logInfo("EventSyncManager initialized and sync started")
+
             // Initialize WindowManager
             windowManager = WindowManager()
             windowManager?.setAPIClient(apiClient!)
+            windowManager?.setEventQueue(eventQueue!)
 
             // Start IPC listener for plugin triggers
             ipcListener = IPCListener()
@@ -53,6 +64,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        // Final sync before app terminates
+        eventSyncManager?.syncOnTermination()
+        eventSyncManager?.stopPeriodicSync()
+
         // Unregister sleep/wake observer
         if let observer = sleepWorkspaceObserver {
             NotificationCenter.default.removeObserver(observer)
