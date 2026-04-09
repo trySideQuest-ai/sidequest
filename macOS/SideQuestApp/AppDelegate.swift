@@ -4,6 +4,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var apiClient: APIClient?
     var windowManager: WindowManager?
     private var ipcListener: IPCListener?
+    private var sleepWorkspaceObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         do {
@@ -34,6 +35,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 // Continue anyway; quests can still be triggered manually
             }
 
+            // Register for sleep/wake notifications to resume IPC after wake
+            registerSleepWakeObserver()
+            ErrorHandler.logInfo("Sleep/wake observer registered")
+
             ErrorHandler.logInfo("SideQuest app launched successfully")
 
         } catch {
@@ -41,9 +46,52 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // App continues even if initialization partial fails
         }
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // Unregister sleep/wake observer
+        if let observer = sleepWorkspaceObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
 }
 
 extension AppDelegate {
+    private func registerSleepWakeObserver() {
+        // Listen for system wake events
+        sleepWorkspaceObserver = NotificationCenter.default.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.applicationDidWake()
+        }
+    }
+
+    private func applicationDidWake() {
+        // Called after system wake from sleep
+        ErrorHandler.logInfo("System woke from sleep; resuming IPC")
+
+        // IPC listener should still be running (Network.framework keeps connection alive)
+        // But verify it's still listening in case of timeout
+
+        // Optional: Log current IPC listener state
+        if ipcListener != nil {
+            ErrorHandler.logInfo("IPC listener active after wake")
+        } else {
+            ErrorHandler.logInfo("IPC listener not found after wake; reinitializing")
+            // Reinitialize if somehow lost
+            ipcListener = IPCListener()
+            ipcListener?.onTriggerReceived = { [weak self] questId, trackingId in
+                self?.handleIPCTrigger(questId: questId, trackingId: trackingId)
+            }
+            do {
+                try ipcListener?.startListening()
+            } catch {
+                ErrorHandler.logNetworkError(error, endpoint: "/tmp/sidequest.sock")
+            }
+        }
+    }
+
     func showTestQuest() {
         do {
             let testQuest = QuestData(
