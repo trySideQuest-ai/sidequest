@@ -12,7 +12,7 @@ enum APIError: Error {
 actor APIClient {
     private let apiBaseURL: URL
     private let bearerToken: String
-    
+
     init(apiBaseURL: String, bearerToken: String) {
         guard let url = URL(string: apiBaseURL) else {
             fatalError("Invalid API base URL: \(apiBaseURL)")
@@ -20,7 +20,16 @@ actor APIClient {
         self.apiBaseURL = url
         self.bearerToken = bearerToken
     }
-    
+
+    // Accessors for EventSyncManager
+    func getBaseURL() -> URL {
+        return apiBaseURL
+    }
+
+    func getBearerToken() -> String {
+        return bearerToken
+    }
+
     func fetchQuest() async throws -> QuestData {
         // Construct /quest endpoint URL
         let questURL = apiBaseURL.appendingPathComponent("quest")
