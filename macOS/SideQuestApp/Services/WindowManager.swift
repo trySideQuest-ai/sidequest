@@ -5,7 +5,9 @@ class WindowManager: NSObject {
     private var notificationWindow: NSWindow?
     private var dismissTimer: Timer?
     private var apiClient: APIClient?
+    private var eventQueue: EventQueue?
     private var questQueue: [QuestData] = []
+    private var displayStartTime: Date?
 
     override init() {
         super.init()
@@ -13,6 +15,10 @@ class WindowManager: NSObject {
 
     func setAPIClient(_ client: APIClient) {
         self.apiClient = client
+    }
+
+    func setEventQueue(_ queue: EventQueue) {
+        self.eventQueue = queue
     }
 
     // MARK: - Public Interface
@@ -90,6 +96,7 @@ class WindowManager: NSObject {
 
             // Store reference
             self.notificationWindow = window
+            self.displayStartTime = Date()
 
             // Animate in from the right
             animateIn(window)
@@ -103,10 +110,30 @@ class WindowManager: NSObject {
             window.makeKeyAndOrderFront(nil)
             ErrorHandler.logQuestDisplay(questData.quest_id)
 
+            // Log quest_shown event (fire-and-forget)
+            Task {
+                await self.eventQueue?.addEvent(
+                    userId: "unknown",  // TODO: Get real userId from auth in Plan 04
+                    questId: questData.quest_id,
+                    trackingId: self.deriveTrackingId(from: questData),
+                    eventType: "quest_shown",
+                    metadata: [
+                        "display_duration_ms": .int(8000),
+                        "position": .string("top-right")
+                    ]
+                )
+            }
+
         } catch {
             ErrorHandler.logWindowError(error, operation: "display quest")
             // Continue without showing error — user never knows
         }
+    }
+
+    private func deriveTrackingId(from questData: QuestData) -> String {
+        // TODO: Extract tracking_id from questData or tracking_url in Plan 04
+        // For now, use questId as placeholder
+        return questData.quest_id
     }
 
     private func animateIn(_ window: NSWindow) {
@@ -131,6 +158,20 @@ class WindowManager: NSObject {
     }
 
     private func handleOpen(_ questData: QuestData) {
+        // Log quest_clicked event (fire-and-forget)
+        Task {
+            let timeToClick = self.displayStartTime.map { Date().timeIntervalSince($0) * 1000 } ?? 0
+            await self.eventQueue?.addEvent(
+                userId: "unknown",  // TODO: Get real userId from auth in Plan 04
+                questId: questData.quest_id,
+                trackingId: self.deriveTrackingId(from: questData),
+                eventType: "quest_clicked",
+                metadata: [
+                    "time_to_click_ms": .double(timeToClick)
+                ]
+            )
+        }
+
         // Open landing page in default browser
         if let url = URL(string: questData.tracking_url) {
             NSWorkspace.shared.open(url)
@@ -146,6 +187,24 @@ class WindowManager: NSObject {
 
         guard let window = notificationWindow else { return }
 
+        // Capture quest data for event logging (will use placeholder questId)
+        let questId = "unknown"  // TODO: Store current questId in displayQuest
+        let trackingId = questId
+
+        // Log quest_dismissed event (fire-and-forget)
+        Task {
+            let displayDuration = self.displayStartTime.map { Date().timeIntervalSince($0) * 1000 } ?? 0
+            await self.eventQueue?.addEvent(
+                userId: "unknown",  // TODO: Get real userId from auth in Plan 04
+                questId: questId,
+                trackingId: trackingId,
+                eventType: "quest_dismissed",
+                metadata: [
+                    "display_duration_ms": .double(displayDuration)
+                ]
+            )
+        }
+
         // Animate fade out
         NSAnimationContext.runAnimationGroup({ [weak self] context in
             context.duration = 0.2  // 0.2 second fade-out
@@ -153,6 +212,7 @@ class WindowManager: NSObject {
             context.completionHandler = {
                 window.close()
                 self?.notificationWindow = nil
+                self?.displayStartTime = nil
 
                 // If there are queued quests, show the next one
                 if let nextQuest = self?.questQueue.first {
