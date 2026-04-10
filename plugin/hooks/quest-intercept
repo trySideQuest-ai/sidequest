@@ -40,6 +40,14 @@ quest = json.load(open(active_path))
 saved.append(quest)
 json.dump(saved, open(saved_path, 'w'), indent=2)
 " "$ACTIVE_FILE" "$SAVED_FILE" 2>/dev/null
+
+    # Fire quest_saved event to server
+    TRACKING_URL=$(grep -o '"tracking_url":\s*"[^"]*"' "$ACTIVE_FILE" | head -1 | sed 's/"tracking_url":\s*"//' | sed 's/"$//')
+    if [ -n "$TRACKING_URL" ]; then
+      SAVE_URL=$(echo "$TRACKING_URL" | sed 's|/click/|/save/|')
+      curl -s --max-time 2 "$SAVE_URL" >/dev/null 2>&1 &
+    fi
+
     rm -f "$ACTIVE_FILE"
     echo "Quest saved for later" >&2
     exit 2
