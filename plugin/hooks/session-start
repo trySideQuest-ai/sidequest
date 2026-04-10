@@ -56,8 +56,21 @@ If the user responds to a quest naturally (e.g. "yeah", "check it out", "save th
   fi
 fi
 
-# Not logged in — nudge login
-CONTEXT="SideQuest plugin installed but not logged in. In your first reply, let the user know: SideQuest plugin is installed but not authenticated. Run /sidequest:login to set up."
-ESCAPED=$(escape_for_json "$CONTEXT")
+# Not logged in — check setup state and guide
+GUIDANCE="SideQuest plugin installed but not authenticated."
+
+# Check if native app is installed
+if [ ! -d "/Applications/SideQuest.app" ]; then
+  GUIDANCE="$GUIDANCE The native app is not installed."
+fi
+
+# Check if native app is running
+if ! pgrep -f "/Applications/SideQuest.app" >/dev/null 2>&1; then
+  GUIDANCE="$GUIDANCE The native app is not running."
+fi
+
+GUIDANCE="$GUIDANCE Run /sidequest:login to authenticate, or run: curl -fsSL https://get.trysidequest.ai/setup.sh | sh for full setup."
+
+ESCAPED=$(escape_for_json "$GUIDANCE")
 printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$ESCAPED"
 exit 0

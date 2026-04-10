@@ -98,7 +98,11 @@ cat > "$HOME/.sidequest/last-quest.json" 2>/dev/null << LASTJSON
 LASTJSON
 
 # IPC trigger to native app (sends full quest data)
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-"${SCRIPT_DIR}/xpc-socket-helper.sh" "$QUEST_ID" "$QUEST_ID" "$DISPLAY_TEXT" "$SUBTITLE" "$TRACKING_URL" "${REWARD_AMOUNT:-250}" "${BRAND_NAME:-Unknown}" "${CATEGORY:-DevTool}" 2>/dev/null || true
+# Verify socket exists before attempting delivery
+SOCKET_PATH="$HOME/.sidequest/sidequest.sock"
+if [ -S "$SOCKET_PATH" ]; then
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  "${SCRIPT_DIR}/xpc-socket-helper.sh" "$QUEST_ID" "$QUEST_ID" "$DISPLAY_TEXT" "$SUBTITLE" "$TRACKING_URL" "${REWARD_AMOUNT:-250}" "${BRAND_NAME:-Unknown}" "${CATEGORY:-DevTool}" 2>/dev/null || true
+fi
 
 exit 0
