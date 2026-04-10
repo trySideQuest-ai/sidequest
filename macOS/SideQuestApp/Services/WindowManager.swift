@@ -1,9 +1,11 @@
 import AppKit
+import Carbon
 import SwiftUI
 
 // NSPanel — .nonactivatingPanel lets clicks work without activating the app
 class FloatingPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
 }
 
 // NSHostingView subclass: accepts first-mouse clicks + NSTrackingArea for hover
@@ -54,8 +56,11 @@ class WindowManager: NSObject {
     private var displayStartTime: Date?
     private var currentQuest: QuestData?
     private var userId: String = "unknown"
-    private var globalKeyMonitor: Any?
-    private var localKeyMonitor: Any?
+    private var hotKeyRefs: [EventHotKeyRef?] = []
+    private var hotKeyHandlerRef: EventHandlerRef?
+    // Static ref so the Carbon C callback can reach the active instance
+    nonisolated(unsafe) private static weak var activeInstance: WindowManager?
+    private var currentQuestForHotkey: QuestData?
     private var dismissRemainingTime: TimeInterval = 0
     private var timerStartDate: Date?
     private var hoverState = QuestHoverState()
@@ -86,14 +91,12 @@ class WindowManager: NSObject {
     deinit {
         dismissTimer?.invalidate()
         dismissTimer = nil
-        if let monitor = globalKeyMonitor {
-            NSEvent.removeMonitor(monitor)
-            globalKeyMonitor = nil
+        // Inline cleanup — deinit can't call @MainActor methods
+        for ref in hotKeyRefs {
+            if let ref = ref { UnregisterEventHotKey(ref) }
         }
-        if let monitor = localKeyMonitor {
-            NSEvent.removeMonitor(monitor)
-            localKeyMonitor = nil
-        }
+        if let handler = hotKeyHandlerRef { RemoveEventHandler(handler) }
+        WindowManager.activeInstance = nil
     }
 
     func setAPIClient(_ client: APIClient) {
@@ -193,7 +196,11 @@ class WindowManager: NSObject {
         self.displayStartTime = Date()
         self.currentQuest = questData
 
-        installKeyMonitor(questData: questData)
+        installHotKeys(questData: questData)
+
+        // Capture the currently focused app BEFORE showing our window
+        let previousApp = NSWorkspace.shared.frontmostApplication
+
         animateIn(window, to: frame)
 
         // Auto-dismiss after 8 seconds
@@ -205,7 +212,12 @@ class WindowManager: NSObject {
             }
         }
 
-        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+
+        // Immediately return focus to whatever app the user was in
+        if let previousApp = previousApp {
+            previousApp.activate()
+        }
         ErrorHandler.logQuestDisplay(questData.quest_id)
 
         // Log quest_shown event
@@ -225,60 +237,95 @@ class WindowManager: NSObject {
         }
     }
 
-    // MARK: - Global Keyboard Shortcuts
+    // MARK: - Global Keyboard Shortcuts (Carbon RegisterEventHotKey — no Accessibility needed)
 
-    private func installKeyMonitor(questData: QuestData) {
-        removeKeyMonitor()
+    // Static handler for Carbon callback (C function pointer, cannot capture context)
+    nonisolated static func handleHotKey(id: UInt32) {
+        Task { @MainActor in
+            guard let manager = WindowManager.activeInstance,
+                  let quest = manager.currentQuestForHotkey,
+                  manager.notificationWindow != nil else { return }
 
-        let trusted = AXIsProcessTrusted()
-        WindowManager.debug("installKeyMonitor — AXIsProcessTrusted: \(trusted)")
+            WindowManager.debug("Carbon hotkey fired: id=\(id)")
 
-        let handler: (NSEvent) -> Void = { [weak self] event in
-            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
-            WindowManager.debug("Key event: flags=\(flags.rawValue) key='\(key)'")
-
-            let isCmdCtrl = flags.contains(.command) && flags.contains(.control)
-            guard isCmdCtrl else { return }
-
-            WindowManager.debug("Matched ⌘⌃ + '\(key)'")
-
-            Task { @MainActor in
-                guard self?.notificationWindow != nil else { return }
-                switch key {
-                case "o":
-                    self?.handleOpen(questData)
-                case "s":
-                    self?.handleSave(questData)
-                case "d":
-                    self?.handleDismiss()
-                default:
-                    break
-                }
+            switch id {
+            case 1: manager.handleOpen(quest)
+            case 2: manager.handleSave(quest)
+            case 3: manager.handleDismiss()
+            default: break
             }
         }
-
-        // Global monitor — works from any app (needs Accessibility permission)
-        globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: handler)
-
-        // Local monitor — works when notification window is focused (no permission needed)
-        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            handler(event)
-            return event
-        }
-
-        WindowManager.debug("Monitors installed: global=\(globalKeyMonitor != nil) local=\(localKeyMonitor != nil)")
     }
 
-    private func removeKeyMonitor() {
-        if let monitor = globalKeyMonitor {
-            NSEvent.removeMonitor(monitor)
-            globalKeyMonitor = nil
+    private func installHotKeys(questData: QuestData) {
+        removeHotKeys()
+
+        WindowManager.activeInstance = self
+        currentQuestForHotkey = questData
+
+        // Install Carbon event handler (one handler for all hotkeys)
+        var eventType = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: UInt32(kEventHotKeyPressed)
+        )
+
+        InstallEventHandler(
+            GetApplicationEventTarget(),
+            { (_: EventHandlerCallRef?, event: EventRef?, _: UnsafeMutableRawPointer?) -> OSStatus in
+                var hotKeyID = EventHotKeyID()
+                let err = GetEventParameter(
+                    event,
+                    EventParamName(kEventParamDirectObject),
+                    EventParamType(typeEventHotKeyID),
+                    nil,
+                    MemoryLayout<EventHotKeyID>.size,
+                    nil,
+                    &hotKeyID
+                )
+                guard err == noErr else { return err }
+                WindowManager.handleHotKey(id: hotKeyID.id)
+                return noErr
+            },
+            1,
+            &eventType,
+            nil,
+            &hotKeyHandlerRef
+        )
+
+        // Register ⌘⌃O (open=1), ⌘⌃S (save=2), ⌘⌃D (dismiss=3)
+        let modifiers = UInt32(cmdKey | controlKey)
+        let keys: [(keyCode: UInt32, id: UInt32)] = [
+            (31, 1),  // 'o'
+            (1, 2),   // 's'
+            (2, 3),   // 'd'
+        ]
+        let signature = OSType(0x5351_5354) // "SQST"
+
+        for key in keys {
+            var ref: EventHotKeyRef?
+            let hkID = EventHotKeyID(signature: signature, id: key.id)
+            RegisterEventHotKey(key.keyCode, modifiers, hkID, GetApplicationEventTarget(), 0, &ref)
+            hotKeyRefs.append(ref)
         }
-        if let monitor = localKeyMonitor {
-            NSEvent.removeMonitor(monitor)
-            localKeyMonitor = nil
+
+        WindowManager.debug("Carbon hotkeys registered: \(hotKeyRefs.count) keys")
+    }
+
+    private func removeHotKeys() {
+        for ref in hotKeyRefs {
+            if let ref = ref {
+                UnregisterEventHotKey(ref)
+            }
         }
+        hotKeyRefs.removeAll()
+
+        if let handler = hotKeyHandlerRef {
+            RemoveEventHandler(handler)
+            hotKeyHandlerRef = nil
+        }
+
+        currentQuestForHotkey = nil
+        WindowManager.activeInstance = nil
     }
 
     // MARK: - Tracking ID
@@ -415,7 +462,7 @@ class WindowManager: NSObject {
     private func handleDismiss() {
         dismissTimer?.invalidate()
         dismissTimer = nil
-        removeKeyMonitor()
+        removeHotKeys()
 
         guard let window = notificationWindow else { return }
 
