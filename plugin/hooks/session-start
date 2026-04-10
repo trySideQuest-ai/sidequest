@@ -8,31 +8,35 @@ set -euo pipefail
 # Unified config location first, then legacy
 CONFIG_FILE="$HOME/.sidequest/config.json"
 if [ ! -f "$CONFIG_FILE" ]; then
-  CONFIG_FILE="${CLAUDE_PLUGIN_DATA}/config.json"
+  CONFIG_FILE="${CLAUDE_PLUGIN_DATA:-/dev/null}/config.json"
 fi
 
-# JSON string escaper (same approach as Superpowers plugin)
-escape_for_json() {
-    local s="$1"
-    s="${s//\\/\\\\}"
-    s="${s//\"/\\\"}"
-    s="${s//$'\n'/\\n}"
-    s="${s//$'\r'/\\r}"
-    s="${s//$'\t'/\\t}"
-    printf '%s' "$s"
+# Use python3 for JSON output — handles Unicode correctly
+json_output() {
+  python3 -c "
+import json, sys
+context = sys.stdin.read()
+print(json.dumps({
+  'hookSpecificOutput': {
+    'hookEventName': 'SessionStart',
+    'additionalContext': context
+  }
+}, ensure_ascii=False))
+"
 }
 
 if [ -f "$CONFIG_FILE" ]; then
-  TOKEN=$(grep -o '"token":\s*"[^"]*"' "$CONFIG_FILE" | head -1 | sed 's/"token":\s*"//' | sed 's/"$//')
+  TOKEN=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('token',''))" "$CONFIG_FILE" 2>/dev/null || echo "")
   if [ -n "$TOKEN" ]; then
     # Logged in — inject standing instructions for quest display
-    CONTEXT='SideQuest plugin is enabled. When a stop hook delivers a quest in the format "SideQuest: TITLE +Ng. | SPONSOR — TAGLINE", display it as:
+    cat <<'CONTEXT' | json_output
+SideQuest plugin is enabled. When a stop hook delivers a quest in the format "SideQuest: TITLE +Ng. | SPONSOR -- TAGLINE", display it as:
 
-1. A sponsor line: ⚔️ **SPONSOR** — TAGLINE
+1. A sponsor line: **SPONSOR** -- TAGLINE
 2. A scroll card in a fenced code block using this exact template (pad each content line to 28 chars between the pipes):
 
 ```
-⠀⠀⠀______________________________
+   ______________________________
  / \                             \.
 |   |       Side Quest           |.
  \_ |                            |.
@@ -46,12 +50,10 @@ if [ -f "$CONFIG_FILE" ]; then
     \_/____________________________/.
 ```
 
-Wrap long titles across multiple lines. Do not write any additional text — just the sponsor line and the code block, nothing else.
+Wrap long titles across multiple lines. Do not write any additional text -- just the sponsor line and the code block, nothing else.
 
-If the user responds to a quest naturally (e.g. "yeah", "check it out", "save that", "not interested") instead of pressing 1/2/0, use /sidequest:quest to handle their response.'
-
-    ESCAPED=$(escape_for_json "$CONTEXT")
-    printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$ESCAPED"
+If the user responds to a quest naturally (e.g. "yeah", "check it out", "save that", "not interested") instead of pressing 1/2/0, use /sidequest:quest to handle their response.
+CONTEXT
     exit 0
   fi
 fi
@@ -60,17 +62,17 @@ fi
 GUIDANCE="SideQuest plugin installed but not authenticated."
 
 # Check if native app is installed
-if [ ! -d "/Applications/SideQuest.app" ]; then
+APP_PATH="$HOME/Applications/SideQuestApp.app"
+if [ ! -d "$APP_PATH" ]; then
   GUIDANCE="$GUIDANCE The native app is not installed."
 fi
 
 # Check if native app is running
-if ! pgrep -f "/Applications/SideQuest.app" >/dev/null 2>&1; then
+if ! pgrep -f "SideQuestApp" >/dev/null 2>&1; then
   GUIDANCE="$GUIDANCE The native app is not running."
 fi
 
 GUIDANCE="$GUIDANCE Run /sidequest:login to authenticate, or run: curl -fsSL https://get.trysidequest.ai/setup.sh | sh for full setup."
 
-ESCAPED=$(escape_for_json "$GUIDANCE")
-printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$ESCAPED"
+echo "$GUIDANCE" | json_output
 exit 0

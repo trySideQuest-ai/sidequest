@@ -136,7 +136,8 @@ struct QuestCardView: View {
             .padding(8)
         }
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .onChange(of: hoverState.isHovered) { _, hovering in
+        .onChange(of: hoverState.isHovered) { [hoverState] _ in
+            let hovering = hoverState.isHovered
             if hovering {
                 // Pause: snapshot current progress from real time
                 pausedProgress = currentProgress(at: Date())
