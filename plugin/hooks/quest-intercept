@@ -28,8 +28,9 @@ case "$PROMPT" in
     exit 2
     ;;
   "2")
-    # Save quest for later
-    SAVED_FILE="${CLAUDE_PLUGIN_DATA}/saved-quests.json"
+    # Save quest for later (unified location)
+    SAVED_FILE="$HOME/.sidequest/saved-quests.json"
+    mkdir -p "$HOME/.sidequest" 2>/dev/null
     python3 -c "
 import json, os, sys
 active_path = sys.argv[1]

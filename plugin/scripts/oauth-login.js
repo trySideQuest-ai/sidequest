@@ -7,12 +7,7 @@ const path = require('path');
 const { exec } = require('child_process');
 
 const API_BASE = 'https://api.trysidequest.ai';
-const PLUGIN_DATA = process.env.CLAUDE_PLUGIN_DATA;
-
-if (!PLUGIN_DATA) {
-  console.error('Error: CLAUDE_PLUGIN_DATA not set');
-  process.exit(1);
-}
+const SIDEQUEST_DIR = path.join(process.env.HOME, '.sidequest');
 
 const state = crypto.randomBytes(16).toString('hex');
 
@@ -45,8 +40,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const configPath = path.join(PLUGIN_DATA, 'config.json');
-  fs.mkdirSync(PLUGIN_DATA, { recursive: true });
+  const configPath = path.join(SIDEQUEST_DIR, 'config.json');
+  fs.mkdirSync(SIDEQUEST_DIR, { recursive: true });
   fs.writeFileSync(configPath, JSON.stringify({ token, enabled: true }, null, 2));
 
   res.writeHead(200, { 'Content-Type': 'text/html' });

@@ -16,8 +16,8 @@ python3 -c "
 import json, os
 
 paths = [
-    os.path.join(os.environ.get('CLAUDE_PLUGIN_DATA', ''), 'saved-quests.json'),
-    os.path.expanduser('~/.sidequest/saved-quests.json')
+    os.path.expanduser('~/.sidequest/saved-quests.json'),
+    os.path.join(os.environ.get('CLAUDE_PLUGIN_DATA', ''), 'saved-quests.json')
 ]
 
 seen_ids = set()

@@ -25,41 +25,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             LaunchAtLoginManager.shared.registerForLoginItems()
         }
 
-        // Load token from config file, fall back to placeholder for testing
-        let configDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("SideQuest")
-        let configFile = configDir.appendingPathComponent("config.json")
+        // Load token from unified config (~/.sidequest/config.json), fall back to legacy locations
         var bearerToken = ""
         var userId = "unknown"
         var apiBase = "https://api.trysidequest.ai"
 
-        if let data = try? Data(contentsOf: configFile),
-           let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            bearerToken = config["token"] as? String ?? ""
-            userId = config["user_id"] as? String ?? "unknown"
-            apiBase = config["api_base"] as? String ?? apiBase
-        }
+        let configPaths = [
+            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".sidequest/config.json"),
+            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("SideQuest/config.json"),
+            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/plugins/sidequest/config.json")
+        ]
 
-        // Also try reading from plugin config as fallback
-        if bearerToken.isEmpty {
-            let pluginPaths = [
-                FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/plugins/sidequest/config.json"),
-                FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".sidequest/config.json")
-            ]
-            for path in pluginPaths {
-                if let data = try? Data(contentsOf: path),
-                   let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let token = config["token"] as? String, !token.isEmpty {
-                    bearerToken = token
-                    userId = config["user_id"] as? String ?? userId
-                    apiBase = config["api_base"] as? String ?? apiBase
-                    break
-                }
+        for path in configPaths {
+            if let data = try? Data(contentsOf: path),
+               let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let token = config["token"] as? String, !token.isEmpty {
+                bearerToken = token
+                userId = config["user_id"] as? String ?? userId
+                apiBase = config["api_base"] as? String ?? apiBase
+                break
             }
         }
 
         if bearerToken.isEmpty {
-            ErrorHandler.logInfo("No auth token found. API calls will fail. Place config at ~/Library/Application Support/SideQuest/config.json")
+            ErrorHandler.logInfo("No auth token found. Run the SideQuest setup command or /sidequest:login to authenticate.")
         }
 
         // Initialize services

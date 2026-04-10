@@ -5,7 +5,11 @@
 
 set -euo pipefail
 
-CONFIG_FILE="${CLAUDE_PLUGIN_DATA}/config.json"
+# Unified config location first, then legacy
+CONFIG_FILE="$HOME/.sidequest/config.json"
+if [ ! -f "$CONFIG_FILE" ]; then
+  CONFIG_FILE="${CLAUDE_PLUGIN_DATA}/config.json"
+fi
 
 # JSON string escaper (same approach as Superpowers plugin)
 escape_for_json() {

@@ -32,7 +32,9 @@ For **save**:
 python3 -c "
 import json, os
 active_path = os.path.join(os.environ['CLAUDE_PLUGIN_DATA'], 'active-quest.json')
-saved_path = os.path.join(os.environ['CLAUDE_PLUGIN_DATA'], 'saved-quests.json')
+saved_dir = os.path.expanduser('~/.sidequest')
+os.makedirs(saved_dir, exist_ok=True)
+saved_path = os.path.join(saved_dir, 'saved-quests.json')
 saved = json.load(open(saved_path)) if os.path.exists(saved_path) else []
 quest = json.load(open(active_path))
 saved.append(quest)

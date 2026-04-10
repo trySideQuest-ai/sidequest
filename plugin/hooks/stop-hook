@@ -11,10 +11,13 @@ INPUT=$(cat)
 # Active quest tracking (re-fire guard disabled for testing)
 ACTIVE_FILE="${CLAUDE_PLUGIN_DATA}/active-quest.json"
 
-# Check for config file with auth token
-CONFIG_FILE="${CLAUDE_PLUGIN_DATA}/config.json"
+# Check for config file with auth token (unified location first, then legacy)
+CONFIG_FILE="$HOME/.sidequest/config.json"
 if [ ! -f "$CONFIG_FILE" ]; then
-  exit 0
+  CONFIG_FILE="${CLAUDE_PLUGIN_DATA}/config.json"
+  if [ ! -f "$CONFIG_FILE" ]; then
+    exit 0
+  fi
 fi
 
 # Read config (use python3 for reliable JSON parsing)
