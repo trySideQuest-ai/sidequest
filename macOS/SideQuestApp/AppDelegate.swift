@@ -20,10 +20,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             ErrorHandler.logInfo("Accessibility not granted — global keyboard shortcuts disabled. Local shortcuts work after clicking notification.")
         }
 
-        // Register for auto-launch on login (one-time check)
-        if !LaunchAtLoginManager.shared.isEnabled() {
-            LaunchAtLoginManager.shared.registerForLoginItems()
-        }
+        // Auto-launch is handled by launchd KeepAlive plist (installed by setup.sh).
+        // SMAppService Login Items disabled to avoid duplicate instances.
+        // See plugin/resources/ai.sidequest.app.plist
 
         // Load token from unified config (~/.sidequest/config.json), fall back to legacy locations
         var bearerToken = ""

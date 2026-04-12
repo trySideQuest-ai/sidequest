@@ -182,14 +182,31 @@ hdiutil detach "$MOUNT_PATH" 2>/dev/null || true
 rm -rf "$MOUNT_PATH"
 echo -e "${GREEN}✓${NC}"
 
-# Step 10: Auto-launch at login
-# The app registers itself via SMAppService (Login Items) on first run.
-# launchd KeepAlive plist is available at plugin/resources/ai.sidequest.app.plist
-# but is NOT installed automatically — it conflicts with SMAppService and causes
-# duplicate instances. KeepAlive integration deferred to v1.6 (requires Swift
-# app changes to disable SMAppService when launchd plist is present).
-echo -n "🔄 Auto-launch at login... "
-echo -e "${GREEN}✓${NC} (via Login Items on first app launch)"
+# Step 10: Setup launchd KeepAlive for auto-restart on crash
+echo -n "🔄 Setting up launchd auto-restart... "
+
+PLIST_SRC=""
+# Check multiple locations for the plist template
+for candidate in \
+  "$SCRIPT_DIR/../../plugin/resources/ai.sidequest.app.plist" \
+  "$SCRIPT_DIR/../plugin/resources/ai.sidequest.app.plist"; do
+  if [ -f "$candidate" ]; then
+    PLIST_SRC="$candidate"
+    break
+  fi
+done
+
+if [ -n "$PLIST_SRC" ]; then
+  PLIST_DEST="$HOME/Library/LaunchAgents/ai.sidequest.app.plist"
+  mkdir -p "$HOME/Library/LaunchAgents" 2>/dev/null
+  sed "s|__APP_PATH__|$INSTALL_PATH|g" "$PLIST_SRC" > "$PLIST_DEST"
+  chmod 644 "$PLIST_DEST"
+  launchctl unload "$PLIST_DEST" 2>/dev/null || true
+  launchctl load "$PLIST_DEST" 2>/dev/null || true
+  echo -e "${GREEN}✓${NC}"
+else
+  echo -e "${YELLOW}SKIPPED${NC} (plist template not found)"
+fi
 
 # Step 11: Launch app (if not skipped)
 if [ "$SKIP_LAUNCH" = false ]; then
