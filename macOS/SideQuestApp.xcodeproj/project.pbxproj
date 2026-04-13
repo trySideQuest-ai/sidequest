@@ -14,7 +14,6 @@
 		A10006 /* EventQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10006 /* EventQueue.swift */; };
 		A10007 /* EventSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10007 /* EventSyncManager.swift */; };
 		A10008 /* IPCListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10008 /* IPCListener.swift */; };
-		A10009 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10009 /* LaunchAtLoginManager.swift */; };
 		A10010 /* StateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10010 /* StateManager.swift */; };
 		A10011 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10011 /* WindowManager.swift */; };
 		A10012 /* MenuContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10012 /* MenuContentView.swift */; };
@@ -31,7 +30,6 @@
 		B10006 /* EventQueue.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EventQueue.swift; sourceTree = "<group>"; };
 		B10007 /* EventSyncManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EventSyncManager.swift; sourceTree = "<group>"; };
 		B10008 /* IPCListener.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = IPCListener.swift; sourceTree = "<group>"; };
-		B10009 /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
 		B10010 /* StateManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StateManager.swift; sourceTree = "<group>"; };
 		B10011 /* WindowManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
 		B10012 /* MenuContentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MenuContentView.swift; sourceTree = "<group>"; };
@@ -49,7 +47,7 @@
 		D10001 /* = */ = {isa = PBXGroup; children = (D10002 /* SideQuestApp */, D10005 /* Products */); sourceTree = "<group>"; };
 		D10002 /* SideQuestApp */ = {isa = PBXGroup; children = (B10001 /* App.swift */, B10002 /* AppDelegate.swift */, B10015 /* Info.plist */, D10003 /* Models */, D10004 /* Services */, D10006 /* Views */); path = SideQuestApp; sourceTree = "<group>"; };
 		D10003 /* Models */ = {isa = PBXGroup; children = (B10003 /* QuestData.swift */); name = Models; path = Models; sourceTree = "<group>"; };
-		D10004 /* Services */ = {isa = PBXGroup; children = (B10004 /* APIClient.swift */, B10005 /* ErrorHandler.swift */, B10006 /* EventQueue.swift */, B10007 /* EventSyncManager.swift */, B10008 /* IPCListener.swift */, B10009 /* LaunchAtLoginManager.swift */, B10010 /* StateManager.swift */, B10011 /* WindowManager.swift */); name = Services; path = Services; sourceTree = "<group>"; };
+		D10004 /* Services */ = {isa = PBXGroup; children = (B10004 /* APIClient.swift */, B10005 /* ErrorHandler.swift */, B10006 /* EventQueue.swift */, B10007 /* EventSyncManager.swift */, B10008 /* IPCListener.swift */, B10010 /* StateManager.swift */, B10011 /* WindowManager.swift */); name = Services; path = Services; sourceTree = "<group>"; };
 		D10005 /* Products */ = {isa = PBXGroup; children = (B10100 /* SideQuestApp.app */); name = Products; sourceTree = "<group>"; };
 		D10006 /* Views */ = {isa = PBXGroup; children = (B10012 /* MenuContentView.swift */, B10013 /* NotificationWindowView.swift */, B10014 /* QuestCardView.swift */); name = Views; path = Views; sourceTree = "<group>"; };
 /* End PBXGroup section */
@@ -63,7 +61,7 @@
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
-		G10001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10001, A10002, A10003, A10004, A10005, A10006, A10007, A10008, A10009, A10010, A10011, A10012, A10013, A10014); runOnlyForDeploymentPostprocessing = 0; };
+		G10001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10001, A10002, A10003, A10004, A10005, A10006, A10007, A10008, A10010, A10011, A10012, A10013, A10014); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
