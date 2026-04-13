@@ -1,6 +1,5 @@
 import AppKit
 import ApplicationServices
-import ServiceManagement
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var apiClient: APIClient?
@@ -26,14 +25,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Set app as accessory (menu bar only, no dock icon)
         NSApp.setActivationPolicy(.accessory)
 
-        // One-shot cleanup: unregister any orphaned SMAppService Login Items from previous versions
-        try? SMAppService().unregister()
-
         // Log Accessibility status (needed for global keyboard shortcuts)
         // Don't prompt — permission is tied to code signature, breaks on dev rebuilds
         if !AXIsProcessTrusted() {
             ErrorHandler.logInfo("Accessibility not granted — global keyboard shortcuts disabled. Local shortcuts work after clicking notification.")
         }
+
+        // Auto-launch is handled by launchd KeepAlive plist (installed by setup.sh).
+        // SMAppService Login Items disabled to avoid duplicate instances.
+        // See plugin/resources/ai.sidequest.app.plist
 
         // Load token from unified config (~/.sidequest/config.json), fall back to legacy locations
         var bearerToken = ""
