@@ -185,6 +185,7 @@ echo -e "${GREEN}✓${NC}"
 # Step 10: Setup launchd KeepAlive for auto-restart on crash
 echo -n "🔄 Setting up launchd auto-restart... "
 
+LAUNCHD_LOADED=false
 PLIST_SRC=""
 # Check multiple locations for the plist template
 for candidate in \
@@ -203,13 +204,14 @@ if [ -n "$PLIST_SRC" ]; then
   chmod 644 "$PLIST_DEST"
   launchctl unload "$PLIST_DEST" 2>/dev/null || true
   launchctl load "$PLIST_DEST" 2>/dev/null || true
+  LAUNCHD_LOADED=true
   echo -e "${GREEN}✓${NC}"
 else
   echo -e "${YELLOW}SKIPPED${NC} (plist template not found)"
 fi
 
-# Step 11: Launch app (if not skipped)
-if [ "$SKIP_LAUNCH" = false ]; then
+# Step 11: Launch app (if not skipped and launchd didn't already start it)
+if [ "$SKIP_LAUNCH" = false ] && [ "$LAUNCHD_LOADED" = false ]; then
   echo ""
   echo "🚀 Launching SideQuest..."
   open "$INSTALL_PATH"
