@@ -124,18 +124,12 @@ class WindowManager: NSObject {
 
     // MARK: - Private Implementation
 
-    private func getActiveScreen() -> NSScreen {
-        if let main = NSScreen.main {
-            return main
-        }
-        if let primary = NSScreen.screens.first {
-            return primary
-        }
-        return NSScreen.screens[0]
+    private func getActiveScreen() -> NSScreen? {
+        return NSScreen.main ?? NSScreen.screens.first
     }
 
     private func displayQuest(_ questData: QuestData) {
-        let activeScreen = getActiveScreen()
+        guard let activeScreen = getActiveScreen() else { return }
         let screenFrame = activeScreen.visibleFrame
 
         let cardWidth: CGFloat = QuestCardView.cardWidth
@@ -339,7 +333,7 @@ class WindowManager: NSObject {
 
     private func animateIn(_ window: NSWindow, to targetFrame: NSRect) {
         var startFrame = targetFrame
-        startFrame.origin.x = getActiveScreen().visibleFrame.maxX
+        startFrame.origin.x = getActiveScreen()?.visibleFrame.maxX ?? targetFrame.maxX
         window.setFrame(startFrame, display: false)
 
         NSAnimationContext.runAnimationGroup({ context in
@@ -396,7 +390,7 @@ class WindowManager: NSObject {
 
         if let url = URL(string: questData.tracking_url),
            let scheme = url.scheme?.lowercased(),
-           scheme == "https" || scheme == "http" {
+           scheme == "https" {
             NSWorkspace.shared.open(url)
         }
 
@@ -439,8 +433,9 @@ class WindowManager: NSObject {
             context.duration = 0.15
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
 
+            let screenMaxX = getActiveScreen()?.visibleFrame.maxX ?? window.frame.maxX
             window.animator().setFrame(
-                NSRect(x: getActiveScreen().visibleFrame.maxX,
+                NSRect(x: screenMaxX,
                        y: window.frame.origin.y,
                        width: window.frame.width,
                        height: window.frame.height),

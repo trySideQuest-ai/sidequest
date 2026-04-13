@@ -14,10 +14,8 @@ actor APIClient {
     private let bearerToken: String
 
     init(apiBaseURL: String, bearerToken: String) {
-        guard let url = URL(string: apiBaseURL) else {
-            fatalError("Invalid API base URL: \(apiBaseURL)")
-        }
-        self.apiBaseURL = url
+        self.apiBaseURL = URL(string: apiBaseURL)
+            ?? URL(string: "https://api.trysidequest.ai")!
         self.bearerToken = bearerToken
     }
 
