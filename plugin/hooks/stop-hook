@@ -75,6 +75,10 @@ API_BASE="${API_BASE:-https://api.trysidequest.ai}"
 # PHASE 2: Load timing state (atomic read)
 # ============================================================================
 
+# Acquire exclusive lock on timing state — if another hook instance holds it, skip this quest
+exec 9>"$HOME/.sidequest/timing-state.json.lock"
+flock -n 9 || exit 0
+
 TIMING_FILE="$HOME/.sidequest/timing-state.json"
 CURRENT_TIME=$(date +%s)
 LAST_HOOK_FIRE=0
@@ -256,7 +260,7 @@ print(json.dumps(merged))
 # ============================================================================
 
 SOCKET_PATH="$HOME/.sidequest/sidequest.sock"
-if ! echo "" | nc -U -w1 "$SOCKET_PATH" 2>/dev/null; then
+if [ ! -S "$SOCKET_PATH" ] || ! echo "" | nc -U -w1 "$SOCKET_PATH" 2>/dev/null; then
   # Socket exists but app isn't responding — stale socket or hung app
   log_error "Socket connection failed: $SOCKET_PATH"
   exit 0
@@ -316,29 +320,25 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Save last quest for retrigger skill (use ~/.sidequest/ so skills can find it)
 mkdir -p "$HOME/.sidequest" 2>/dev/null
 python3 -c "
-import json
+import json, sys, os, tempfile
 quest = {
-    'quest_id': '$QUEST_ID',
-    'display_text': '$DISPLAY_TEXT',
-    'subtitle': '$SUBTITLE',
-    'tracking_url': '$TRACKING_URL',
-    'reward_amount': ${REWARD_AMOUNT:-250},
-    'brand_name': '$BRAND_NAME',
-    'category': '$CATEGORY'
+    'quest_id': sys.argv[1],
+    'display_text': sys.argv[2],
+    'subtitle': sys.argv[3],
+    'tracking_url': sys.argv[4],
+    'reward_amount': int(sys.argv[5]),
+    'brand_name': sys.argv[6],
+    'category': sys.argv[7]
 }
-# Atomic write: write to temp, then rename
-import os, tempfile
 temp_fd, temp_path = tempfile.mkstemp(dir=os.path.expanduser('~/.sidequest'))
 try:
     with os.fdopen(temp_fd, 'w') as f:
         json.dump(quest, f)
     os.rename(temp_path, os.path.expanduser('~/.sidequest/last-quest.json'))
 except:
-    try:
-        os.unlink(temp_path)
-    except:
-        pass
-" 2>/dev/null
+    try: os.unlink(temp_path)
+    except: pass
+" "$QUEST_ID" "$DISPLAY_TEXT" "$SUBTITLE" "$TRACKING_URL" "${REWARD_AMOUNT:-250}" "${BRAND_NAME:-Unknown}" "${CATEGORY:-DevTool}" 2>/dev/null
 
 # ============================================================================
 # PHASE 9: Update timing state (atomic write)
