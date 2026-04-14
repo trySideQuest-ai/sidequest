@@ -1,0 +1,14 @@
+{
+  "domains": {
+    "auth":           { "tags": ["authentication", "oauth", "encryption"] },
+    "payments":       { "tags": ["billing", "rest_api"] },
+    "ci_cd":          { "tags": ["cicd", "docker", "kubernetes", "terraform"] },
+    "database":       { "tags": ["postgresql", "mysql", "mongodb", "redis", "sqlite", "elasticsearch", "dynamodb", "sql"] },
+    "api_design":     { "tags": ["rest_api", "graphql", "websockets", "express", "fastify"] },
+    "testing":        { "tags": ["jest", "pytest", "cypress", "playwright"] },
+    "infrastructure": { "tags": ["docker", "kubernetes", "terraform", "nginx", "linux"] },
+    "monitoring":     { "tags": ["logging", "metrics", "tracing"] },
+    "deployment":     { "tags": ["aws", "gcp", "azure", "cloudflare", "vercel", "serverless"] }
+  },
+  "min_tag_matches": 2
+}
