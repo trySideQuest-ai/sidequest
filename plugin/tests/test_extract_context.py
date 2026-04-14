@@ -130,13 +130,13 @@ class TestContextExtraction(unittest.TestCase):
             tags = json.loads(result.stdout.strip())
             self.assertIn('react', tags)
 
-    def test_returns_max_10_tags(self):
-        # Create entries mentioning many different tools
+    def test_returns_max_20_tags(self):
+        # Create entries mentioning many different tools (v1.7: limit raised to 20)
         entries = [
             make_entry('react next.js vue angular svelte express django flask rails spring postgresql docker kubernetes'),
         ]
         tags = run_extractor(entries)
-        self.assertLessEqual(len(tags), 10)
+        self.assertLessEqual(len(tags), 20)
 
     def test_includes_pasted_content(self):
         entries = [{
