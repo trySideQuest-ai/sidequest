@@ -8,7 +8,15 @@
     "testing":        { "tags": ["jest", "pytest", "cypress", "playwright"] },
     "infrastructure": { "tags": ["docker", "kubernetes", "terraform", "nginx", "linux"] },
     "monitoring":     { "tags": ["logging", "metrics", "tracing"] },
-    "deployment":     { "tags": ["aws", "gcp", "azure", "cloudflare", "vercel", "serverless"] }
+    "deployment":     { "tags": ["aws", "gcp", "azure", "cloudflare", "vercel", "serverless"] },
+    "mobile":         { "tags": ["ios", "android", "react_native", "flutter", "mobile_testing", "push_notifications", "swift", "kotlin"] },
+    "web3":           { "tags": ["blockchain", "ethereum", "solidity", "defi", "web3", "wallet"] },
+    "gaming":         { "tags": ["game_engine", "3d_graphics", "multiplayer", "vr_ar"] },
+    "iot":            { "tags": ["iot", "embedded", "firmware", "edge_computing"] },
+    "data":           { "tags": ["data_pipeline", "data_visualization", "ab_testing", "data_quality", "analytics"] },
+    "collaboration":  { "tags": ["project_management", "issue_tracking", "design_tools", "documentation"] },
+    "content":        { "tags": ["cms", "media_processing", "translation", "search", "storage"] },
+    "automation":     { "tags": ["workflow_automation", "no_code", "internal_tools", "background_jobs"] }
   },
   "min_tag_matches": 2
 }

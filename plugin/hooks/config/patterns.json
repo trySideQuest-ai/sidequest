@@ -95,6 +95,48 @@
     { "slug": "billing", "category": "concept", "patterns": ["\\bstripe\\b", "\\bbilling\\b", "\\bpayment\\b", "\\bsubscription\\b", "\\binvoice\\b", "\\bpaddle\\b", "\\blemon.?squeezy\\b", "\\bchargebee\\b", "\\bbraintree\\b", "\\brazorpay\\b", "\\brecurly\\b", "\\blago\\b"] },
     { "slug": "search", "category": "concept", "patterns": ["\\balgolia\\b", "\\bmeilisearch\\b", "\\btypesense\\b", "\\bfull.?text.?search\\b", "\\bsearch.?index\\b", "\\borama\\b"] },
     { "slug": "storage", "category": "concept", "patterns": ["\\bfile.?upload\\b", "\\bcloudinary\\b", "\\buploadthing\\b", "\\bpresigned.?url\\b", "\\bobject.?storage\\b", "\\bminio\\b", "\\bimagekit\\b", "\\bmulter\\b", "\\bsharp\\b"] },
-    { "slug": "analytics", "category": "concept", "patterns": ["\\bposthog\\b", "\\bmixpanel\\b", "\\bamplitude\\b", "\\bsegment\\b", "\\bplausible\\b", "\\bumami\\b"] }
+    { "slug": "analytics", "category": "concept", "patterns": ["\\bposthog\\b", "\\bmixpanel\\b", "\\bamplitude\\b", "\\bsegment\\b", "\\bplausible\\b", "\\bumami\\b"] },
+
+    { "slug": "ios", "category": "mobile", "patterns": ["\\bios\\b", "\\bxcode\\b", "\\bswiftui\\b", "\\buikit\\b", "\\bcocoapods\\b", "\\bspm\\b", "\\bios.?simulator\\b", "\\bxctest\\b", "\\bcore.?data\\b"] },
+    { "slug": "android", "category": "mobile", "patterns": ["\\bandroid\\b", "\\bjetpack\\b", "\\bcompose\\b.*\\bandroid\\b", "\\bandroid.?studio\\b", "\\bgradle\\b.*\\bandroid\\b", "\\bapk\\b", "\\baab\\b"] },
+    { "slug": "react_native", "category": "mobile", "patterns": ["\\breact.?native\\b", "\\bexpo\\b", "\\bexpo.?router\\b", "\\breact.?navigation\\b", "\\beas\\b.*\\bbuild\\b"] },
+    { "slug": "flutter", "category": "mobile", "patterns": ["\\bflutter\\b", "\\bdart\\b", "\\bpubspec\\b", "\\bwidget\\b.*\\bflutter\\b"] },
+    { "slug": "mobile_testing", "category": "mobile", "patterns": ["\\bappium\\b", "\\bdetox\\b", "\\bxcuitest\\b", "\\bespresso\\b.*\\btest\\b", "\\bmaestro\\b.*\\bmobile\\b"] },
+    { "slug": "push_notifications", "category": "mobile", "patterns": ["\\bpush.?notification\\b", "\\bfcm\\b", "\\bapns\\b", "\\bonesignal\\b", "\\bfirebase.?messaging\\b"] },
+
+    { "slug": "blockchain", "category": "web3", "patterns": ["\\bblockchain\\b", "\\bsolana\\b", "\\bpolygon\\b", "\\bbase.?chain\\b", "\\barbitrum\\b", "\\boptimism\\b", "\\bavalanche\\b", "\\bbnb.?chain\\b"] },
+    { "slug": "ethereum", "category": "web3", "patterns": ["\\bethereum\\b", "\\bevm\\b", "\\bhardhat\\b", "\\bfoundry\\b", "\\bethers\\.?js\\b", "\\bweb3\\.?js\\b", "\\bwagmi\\b", "\\bviem\\b", "\\bgeth\\b", "\\binfura\\b", "\\balchemy\\b"] },
+    { "slug": "solidity", "category": "web3", "patterns": ["\\bsolidity\\b", "\\bsmart.?contract\\b", "\\berc.?(?:20|721|1155)\\b", "\\bopenzeppelin\\b", "\\bremix.?ide\\b"] },
+    { "slug": "defi", "category": "web3", "patterns": ["\\bdefi\\b", "\\buniswap\\b", "\\baave\\b", "\\bcompound\\b", "\\bliquidity.?pool\\b", "\\byield\\b.*\\bfarm\\b", "\\bdex\\b", "\\bamm\\b"] },
+    { "slug": "web3", "category": "web3", "patterns": ["\\bweb3\\b", "\\bdapp\\b", "\\bdecentralized\\b", "\\bweb3auth\\b", "\\bthirdweb\\b", "\\bmoralis\\b", "\\bquicknode\\b"] },
+    { "slug": "wallet", "category": "web3", "patterns": ["\\bwallet\\b.*\\b(?:connect|provider|sdk)\\b", "\\bmetamask\\b", "\\bphantom\\b", "\\bcoinbase.?wallet\\b", "\\bcustodial\\b", "\\bnon.?custodial\\b"] },
+
+    { "slug": "game_engine", "category": "gaming", "patterns": ["\\bunity\\b.*\\b(?:engine|game|3d)\\b", "\\bunreal\\b", "\\bgodot\\b", "\\bgame.?engine\\b", "\\bgame.?dev\\b"] },
+    { "slug": "3d_graphics", "category": "gaming", "patterns": ["\\bblender\\b", "\\bmaya\\b", "\\bthree\\.?js\\b", "\\bwebgl\\b", "\\bopengl\\b", "\\bvulkan\\b", "\\bshader\\b", "\\b3d.?model\\b", "\\bglsl\\b", "\\bhlsl\\b"] },
+    { "slug": "multiplayer", "category": "gaming", "patterns": ["\\bmultiplayer\\b", "\\bplayfab\\b", "\\bphoton\\b", "\\bnakama\\b", "\\bnetcode\\b", "\\bgame.?server\\b", "\\bmatchmaking\\b"] },
+    { "slug": "vr_ar", "category": "gaming", "patterns": ["\\bvr\\b", "\\bar\\b.*\\b(?:kit|core|foundation)\\b", "\\bvisionos\\b", "\\bmeta.?quest\\b", "\\bopenxr\\b", "\\bspatial.?computing\\b", "\\baugmented.?reality\\b", "\\bvirtual.?reality\\b"] },
+
+    { "slug": "iot", "category": "iot", "patterns": ["\\biot\\b", "\\bmqtt\\b", "\\bparticle\\.io\\b", "\\bthingsboard\\b", "\\bhome.?assistant\\b", "\\bzigbee\\b", "\\bmatter\\b.*\\bprotocol\\b", "\\bsensor\\b.*\\bdata\\b"] },
+    { "slug": "embedded", "category": "iot", "patterns": ["\\bembedded\\b", "\\bfreertos\\b", "\\bzephyr\\b", "\\brtos\\b", "\\bmicrocontroller\\b", "\\bstm32\\b", "\\besp32\\b", "\\barduino\\b", "\\bnrf\\b", "\\barm.?cortex\\b"] },
+    { "slug": "firmware", "category": "iot", "patterns": ["\\bfirmware\\b", "\\bota.?update\\b", "\\bplatformio\\b", "\\bmemfault\\b", "\\bgolioth\\b", "\\bflash\\b.*\\b(?:memory|chip)\\b"] },
+    { "slug": "edge_computing", "category": "iot", "patterns": ["\\bedge.?computing\\b", "\\bedge.?(?:function|runtime|device)\\b", "\\btinyml\\b", "\\bedge.?impulse\\b"] },
+
+    { "slug": "data_pipeline", "category": "data", "patterns": ["\\betl\\b", "\\belt\\b", "\\bairflow\\b", "\\bdagster\\b", "\\bprefect\\b", "\\bfivetran\\b", "\\bairbyte\\b", "\\bdbt\\b", "\\bdata.?pipeline\\b", "\\borchestrat\\b"] },
+    { "slug": "data_visualization", "category": "data", "patterns": ["\\btableau\\b", "\\bmetabase\\b", "\\blooker\\b", "\\bsuperset\\b", "\\bpower.?bi\\b", "\\bdashboard\\b.*\\b(?:analytics|data)\\b", "\\bdata.?viz\\b", "\\bplotly\\b"] },
+    { "slug": "ab_testing", "category": "data", "patterns": ["\\ba/?b.?test\\b", "\\bexperiment(?:ation)?\\b", "\\boptimizely\\b", "\\bgrowthbook\\b", "\\bstatsig\\b.*\\bexperiment\\b", "\\beppo\\b", "\\bsplit\\.io\\b.*\\bexperiment\\b"] },
+    { "slug": "data_quality", "category": "data", "patterns": ["\\bdata.?quality\\b", "\\bdata.?governance\\b", "\\bdata.?lineage\\b", "\\bgreat.?expectations\\b", "\\bsoda\\b.*\\bdata\\b", "\\bdata.?catalog\\b", "\\bdata.?observability\\b"] },
+
+    { "slug": "project_management", "category": "collaboration", "patterns": ["\\bjira\\b", "\\basana\\b", "\\bmonday\\.com\\b", "\\bshortcut\\b.*\\b(?:pm|project)\\b", "\\bsprint.?planning\\b", "\\bscrum\\b", "\\bkanban\\b", "\\bagile\\b.*\\bboard\\b"] },
+    { "slug": "issue_tracking", "category": "collaboration", "patterns": ["\\blinear\\b.*\\b(?:app|issue)\\b", "\\bgithub.?issues\\b", "\\byoutrack\\b", "\\bbug.?track\\b", "\\bissue.?tracker\\b"] },
+    { "slug": "design_tools", "category": "collaboration", "patterns": ["\\bfigma\\b", "\\bsketch\\b.*\\bdesign\\b", "\\bpenpot\\b", "\\bmiro\\b", "\\blucidchart\\b", "\\bexcalidraw\\b", "\\bwhiteboard\\b"] },
+    { "slug": "documentation", "category": "collaboration", "patterns": ["\\bconfluence\\b", "\\bdocusaurus\\b", "\\bmintlify\\b", "\\breadme\\.io\\b", "\\bvitepress\\b", "\\bstorybook\\b", "\\bswagger\\b.*\\bdocs\\b"] },
+
+    { "slug": "cms", "category": "content", "patterns": ["\\bheadless.?cms\\b", "\\bcontentful\\b", "\\bsanity\\b.*\\b(?:cms|studio)\\b", "\\bstrapi\\b", "\\bpayload\\b.*\\bcms\\b", "\\bghost\\b.*\\bcms\\b", "\\bwordpress\\b", "\\bhygraph\\b", "\\bprismic\\b"] },
+    { "slug": "media_processing", "category": "content", "patterns": ["\\bcloudinary\\b", "\\bimagekit\\b", "\\bmux\\b.*\\bvideo\\b", "\\bffmpeg\\b", "\\bimage.?optim\\b", "\\btranscod\\b", "\\bocr\\b", "\\btext.?to.?speech\\b", "\\bspeech.?to.?text\\b"] },
+    { "slug": "translation", "category": "content", "patterns": ["\\bdeepL\\b", "\\bi18n\\b", "\\binternationalization\\b", "\\blocalization\\b", "\\bcrowdin\\b", "\\btransifex\\b", "\\blokalise\\b", "\\btranslat\\b.*\\bapi\\b"] },
+
+    { "slug": "workflow_automation", "category": "automation", "patterns": ["\\bzapier\\b", "\\bn8n\\b", "\\bmake\\.com\\b", "\\bpipedream\\b", "\\bactivepieces\\b", "\\bworkflow.?automat\\b", "\\bipaa[sz]\\b", "\\bworkato\\b"] },
+    { "slug": "no_code", "category": "automation", "patterns": ["\\bno.?code\\b", "\\blow.?code\\b", "\\bbubble\\.io\\b", "\\bflutterflow\\b", "\\badalo\\b", "\\bwebflow\\b", "\\bglide\\b.*\\bapp\\b"] },
+    { "slug": "internal_tools", "category": "automation", "patterns": ["\\bretool\\b", "\\bappsmith\\b", "\\btooljet\\b", "\\bbudibase\\b", "\\bdronahq\\b", "\\binternal.?tool\\b", "\\badmin.?panel\\b.*\\bbuild\\b"] }
   ]
 }
