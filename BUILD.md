@@ -37,8 +37,8 @@ To audit the exact code that was released, clone at the release tag:
 
 ```bash
 # Example: clone at plugin release v0.2.0
-git clone --depth 1 --branch plugin-v0.2.0 https://github.com/tomer-shavit/sidequest-client.git
-cd sidequest-client
+git clone --depth 1 --branch plugin-v0.2.0 https://github.com/tomer-shavit/sidequest.git
+cd sidequest
 ```
 
 Verify you're at the correct tag:
@@ -72,7 +72,7 @@ shasum -a 256 dist/sidequest-plugin-*.tar.gz
 
 **4. Verify Against GitHub Release**
 
-1. Navigate to https://github.com/tomer-shavit/sidequest-client/releases/tag/plugin-v0.2.0
+1. Navigate to https://github.com/tomer-shavit/sidequest/releases/tag/plugin-v0.2.0
 2. In the **Release Notes** section, find the SHA256 hash for the plugin tarball
 3. Compare with your local build:
 
@@ -93,8 +93,8 @@ The SideQuest app is a native macOS application built with Xcode. Code signing a
 **1. Clone at Release Tag**
 
 ```bash
-git clone --depth 1 --branch app-v1.8.0 https://github.com/tomer-shavit/sidequest-client.git
-cd sidequest-client
+git clone --depth 1 --branch app-v1.8.0 https://github.com/tomer-shavit/sidequest.git
+cd sidequest
 ```
 
 **2. Build the App**
@@ -130,7 +130,7 @@ shasum -a 256 dist/SideQuestApp-*.dmg
 
 **4. Verify Against GitHub Release**
 
-1. Navigate to https://github.com/tomer-shavit/sidequest-client/releases/tag/app-v1.8.0
+1. Navigate to https://github.com/tomer-shavit/sidequest/releases/tag/app-v1.8.0
 2. Find the DMG SHA256 in Release Notes
 3. Compare:
 
@@ -150,7 +150,7 @@ SideQuest app binaries are code-signed and notarized by Apple. You can verify th
 ```bash
 # Download the DMG from GitHub Releases
 curl -L -o SideQuestApp-1.8.0.dmg \
-  https://github.com/tomer-shavit/sidequest-client/releases/download/app-v1.8.0/SideQuestApp-1.8.0.dmg
+  https://github.com/tomer-shavit/sidequest/releases/download/app-v1.8.0/SideQuestApp-1.8.0.dmg
 
 # Mount the DMG
 hdiutil mount SideQuestApp-1.8.0.dmg
@@ -221,7 +221,7 @@ These ensure consistent timestamps across builds.
 ### Plugin Build Fails
 
 **Error: `package-plugin.sh: No such file or directory`**
-- Ensure you're in the repo root (`sidequest-client/`)
+- Ensure you're in the repo root (`sidequest/`)
 - Verify `scripts/package-plugin.sh` exists: `ls -la scripts/package-plugin.sh`
 
 **Error: `tar: Unknown option --sort=name`**
