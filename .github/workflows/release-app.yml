@@ -114,7 +114,7 @@ jobs:
         run: |
           INVALIDATION_ID=$(aws cloudfront create-invalidation \
             --distribution-id "${{ env.DISTRIBUTION_ID }}" \
-            --paths "/SideQuestApp-*.dmg" "/config.json" "/setup.sh" "/install.sh" \
+            --paths "/SideQuestApp-*.dmg" "/config.json" "/install.sh" \
             --query 'Invalidation.Id' \
             --output text)
           echo "Invalidation ID: $INVALIDATION_ID"

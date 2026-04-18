@@ -73,19 +73,17 @@ Rollback procedures and incident response for the SideQuest public release pipel
 1. Restore from the private monorepo:
    ```bash
    cd /Users/tomershavit/sidequest-ai
-   git log --oneline scripts/setup.sh | head -5
-   git checkout <good-sha> -- scripts/setup.sh
+   git log --oneline scripts/install.sh | head -5
+   git checkout <good-sha> -- scripts/install.sh
    ```
 
-2. Re-deploy both aliases (setup.sh + install.sh):
+2. Re-deploy:
    ```bash
-   aws s3 cp scripts/setup.sh s3://sidequest-releases/setup.sh \
-     --content-type text/plain --acl public-read
-   aws s3 cp scripts/setup.sh s3://sidequest-releases/install.sh \
+   aws s3 cp scripts/install.sh s3://sidequest-releases/install.sh \
      --content-type text/plain --acl public-read
    aws cloudfront create-invalidation \
      --distribution-id E2J2MF0TAZ6G7F \
-     --paths "/setup.sh" "/install.sh"
+     --paths "/install.sh"
    ```
 
 3. Verify live:

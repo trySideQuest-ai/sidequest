@@ -80,7 +80,7 @@ jobs:
         run: |
           INVALIDATION_ID=$(aws cloudfront create-invalidation \
             --distribution-id "${{ env.DISTRIBUTION_ID }}" \
-            --paths "/sidequest-plugin-*.tar.gz" "/config.json" "/install.sh" "/setup.sh" \
+            --paths "/sidequest-plugin-*.tar.gz" "/config.json" "/install.sh" \
             --query 'Invalidation.Id' \
             --output text)
 
