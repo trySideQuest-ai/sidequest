@@ -1,11 +1,14 @@
 import SwiftUI
 
-// MARK: - SideQuestCard (Fantasy Parchment Quest Card)
+// MARK: - SideQuestCard (Fantasy Parchment — design-handoff parity)
 //
-// Pixel-perfect render of v1.9 handoff: parchment body with gold double-ring
-// border, pixel L-bracket ornaments, retro "◆ SIDE QUEST" label, title,
-// subtitle, brand + category chip, dashed separator, keycap shortcut hints,
-// and a gold timer bar along the bottom.
+// Mirrors design_handoff_sidequest_notification/Swift/SideQuestCard.swift:
+// parchment body, gold outer ring + purple inner ring (inset 3pt), 4 pixel-art
+// L-bracket corners, "◆ SIDE QUEST" gold label w/ fade gradient rule, title,
+// subtitle, BrandTag + CategoryTag (left-aligned), solid purple Divider,
+// 3-keycap shortcut rows, circular translucent close, trailing-anchored
+// gradient timer bar. Preserves app integration API (QuestData, hoverState,
+// dismissDuration) + keycap flash scaffolding.
 
 struct SideQuestCard: View {
     let questData: QuestData
@@ -16,13 +19,13 @@ struct SideQuestCard: View {
 
     static let cardWidth: CGFloat = SQMetric.cardWidth
 
-    // Timer state (same strategy as v1.0: TimelineView + snapshot on pause)
+    // Timer state (TimelineView + snapshot-on-pause)
     @State private var isProgressRunning = false
     @State private var progressStartDate: Date?
     @State private var progressStartValue: CGFloat = 1.0
     @State private var pausedProgress: CGFloat = 1.0
 
-    // Keycap flash state (set externally on hotkey fire — placeholder scaffolding)
+    // Keycap flash scaffolding (set externally on hotkey fire)
     @State private var openKeycapFlash: Bool = false
     @State private var dismissKeycapFlash: Bool = false
 
@@ -36,18 +39,23 @@ struct SideQuestCard: View {
     }
 
     var body: some View {
-        ZStack {
-            cardBase
+        ZStack(alignment: .topLeading) {
+            paperBackground
+            ringFrame
+            pixelCorners
             content
-            cornerOrnaments
+                .padding(.top,    SQMetric.cardPadTop)
+                .padding(.trailing, SQMetric.cardPadRight)
+                .padding(.bottom, SQMetric.cardPadBottom)
+                .padding(.leading,  SQMetric.cardPadLeft)
             closeButton
             timerBar
         }
-        .frame(width: SQMetric.cardWidth)
+        .frame(width: SQMetric.cardWidth, alignment: .topLeading)
         .fixedSize(horizontal: false, vertical: true)
+        .sqCardShadow()
         .contentShape(Rectangle())
         .onTapGesture { onOpen() }
-        .sqCardShadow()
         .onChange(of: hoverState.isHovered) { [hoverState] _ in
             let hovering = hoverState.isHovered
             if hovering {
@@ -69,299 +77,318 @@ struct SideQuestCard: View {
         }
     }
 
-    // MARK: - Base (parchment w/ gold double-ring border + noise texture)
+    // MARK: — Paper background (parchment + dot texture)
 
-    private var cardBase: some View {
+    private var paperBackground: some View {
+        RoundedRectangle(cornerRadius: SQMetric.cardRadius, style: .continuous)
+            .fill(SQColor.fantasyPaper)
+            .overlay(ParchmentDots().opacity(0.8))
+            .clipShape(RoundedRectangle(cornerRadius: SQMetric.cardRadius, style: .continuous))
+    }
+
+    // MARK: — Ring frame (outer gold 1pt + inner purple 1pt inset 3pt)
+
+    private var ringFrame: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: SQMetric.outerCorner, style: .continuous)
-                .fill(SQColor.parchment)
+            RoundedRectangle(cornerRadius: SQMetric.cardRadius, style: .continuous)
+                .strokeBorder(SQColor.gold400, lineWidth: 1)
 
-            RoundedRectangle(cornerRadius: SQMetric.outerCorner, style: .continuous)
-                .stroke(SQColor.gold, lineWidth: SQMetric.ringOuter)
-
-            RoundedRectangle(cornerRadius: SQMetric.innerCorner, style: .continuous)
-                .stroke(SQColor.goldDeep.opacity(0.8), lineWidth: SQMetric.ringInner)
-                .padding(SQMetric.ringGap)
-
-            NoiseOverlay()
-                .clipShape(RoundedRectangle(cornerRadius: SQMetric.outerCorner, style: .continuous))
-                .allowsHitTesting(false)
-        }
-    }
-
-    // MARK: - Content Stack
-
-    private var content: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Retro label
-            HStack(spacing: 6) {
-                Text("◆")
-                    .font(SQFont.pixel(7))
-                    .foregroundColor(SQColor.gold)
-                Text("SIDE QUEST")
-                    .font(SQFont.pixel(7))
-                    .foregroundColor(SQColor.ink)
-                    .tracking(2)
-                Spacer()
-            }
-            .padding(.bottom, 2)
-
-            // Title
-            Text(questData.display_text)
-                .font(SQFont.inter(15, weight: .semibold))
-                .foregroundColor(SQColor.ink)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-
-            // Subtitle
-            if !questData.subtitle.isEmpty {
-                Text(questData.subtitle)
-                    .font(SQFont.inter(11, weight: .regular))
-                    .foregroundColor(SQColor.inkSoft)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer().frame(height: 6)
-
-            // Brand + category chip
-            HStack(spacing: 8) {
-                if !questData.brand_name.isEmpty {
-                    Text("from \(questData.brand_name)")
-                        .font(SQFont.inter(10, weight: .medium))
-                        .foregroundColor(SQColor.inkMute)
-                }
-                Spacer(minLength: 0)
-                if !questData.category.isEmpty {
-                    Text(questData.category.uppercased())
-                        .font(SQFont.pixel(7))
-                        .foregroundColor(SQColor.categoryTxt)
-                        .tracking(1)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                .fill(SQColor.categoryChip)
-                        )
-                }
-            }
-
-            // Dashed separator
-            DashedSeparator()
-                .frame(height: 1)
-                .padding(.top, 4)
-
-            // Shortcut hints
-            HStack(spacing: 14) {
-                shortcutCluster(keys: ["⌘", "⌃", "O"], label: "Open", flash: $openKeycapFlash)
-                shortcutCluster(keys: ["⌘", "⌃", "D"], label: "Skip", flash: $dismissKeycapFlash)
-                Spacer(minLength: 0)
-            }
-            .padding(.top, 4)
-        }
-        .padding(.top, SQMetric.cardPadding)
-        .padding(.bottom, 20)
-        .padding(.leading, SQMetric.contentLead)
-        .padding(.trailing, 38) // room for close button
-    }
-
-    // MARK: - Pixel L-Bracket Ornaments (4 corners)
-
-    private var cornerOrnaments: some View {
-        GeometryReader { geo in
-            ZStack {
-                PixelLBracket(corner: .topLeading)
-                    .frame(width: SQMetric.pixelCorner, height: SQMetric.pixelCorner)
-                    .position(x: SQMetric.pixelCorner / 2 + 5,
-                              y: SQMetric.pixelCorner / 2 + 5)
-
-                PixelLBracket(corner: .topTrailing)
-                    .frame(width: SQMetric.pixelCorner, height: SQMetric.pixelCorner)
-                    .position(x: geo.size.width - SQMetric.pixelCorner / 2 - 5,
-                              y: SQMetric.pixelCorner / 2 + 5)
-
-                PixelLBracket(corner: .bottomLeading)
-                    .frame(width: SQMetric.pixelCorner, height: SQMetric.pixelCorner)
-                    .position(x: SQMetric.pixelCorner / 2 + 5,
-                              y: geo.size.height - SQMetric.pixelCorner / 2 - 5)
-
-                PixelLBracket(corner: .bottomTrailing)
-                    .frame(width: SQMetric.pixelCorner, height: SQMetric.pixelCorner)
-                    .position(x: geo.size.width - SQMetric.pixelCorner / 2 - 5,
-                              y: geo.size.height - SQMetric.pixelCorner / 2 - 5)
-            }
+            RoundedRectangle(cornerRadius: SQMetric.cardRadius - 3, style: .continuous)
+                .strokeBorder(SQColor.purple700.opacity(0.55), lineWidth: 1)
+                .padding(SQMetric.ringInsetPurple)
         }
         .allowsHitTesting(false)
     }
 
-    // MARK: - Close button (top-right)
+    // MARK: — Pixel-art corner brackets (4 corners)
+
+    private var pixelCorners: some View {
+        ZStack {
+            PixelBracket()
+                .offset(x: SQMetric.pixelCornerPad, y: SQMetric.pixelCornerPad)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            PixelBracket()
+                .scaleEffect(x: -1, y: 1)
+                .offset(x: -SQMetric.pixelCornerPad, y: SQMetric.pixelCornerPad)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+
+            PixelBracket()
+                .scaleEffect(x: 1, y: -1)
+                .offset(x: SQMetric.pixelCornerPad, y: -SQMetric.pixelCornerPad)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+
+            PixelBracket()
+                .scaleEffect(x: -1, y: -1)
+                .offset(x: -SQMetric.pixelCornerPad, y: -SQMetric.pixelCornerPad)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+        }
+        .allowsHitTesting(false)
+    }
+
+    // MARK: — Content stack
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Row 1: ◆ SIDE QUEST + gold→clear gradient divider
+            HStack(spacing: 8) {
+                Text("◆ SIDE QUEST")
+                    .font(SQFont.pixel(7))
+                    .tracking(0.5)
+                    .foregroundColor(SQColor.gold600)
+
+                LinearGradient(
+                    colors: [SQColor.gold400, .clear],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(height: 1)
+            }
+            .padding(.leading, SQMetric.contentGutter)
+            .padding(.bottom, 4)
+
+            // Row 2: Title
+            Text(questData.display_text)
+                .font(SQFont.inter(14, weight: .semibold))
+                .tracking(-0.1)
+                .lineSpacing(14 * 0.25)
+                .foregroundColor(SQColor.purple800)
+                .padding(.leading, SQMetric.contentGutter)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Row 3: Subtitle
+            if !questData.subtitle.isEmpty {
+                Text(questData.subtitle)
+                    .font(SQFont.inter(12, weight: .regular))
+                    .lineSpacing(12 * 0.4)
+                    .foregroundColor(SQColor.ink2)
+                    .padding(.leading, SQMetric.contentGutter)
+                    .padding(.top, 3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            // Row 4: Meta tags — brand + category, left-aligned
+            HStack(spacing: 6) {
+                if !questData.brand_name.isEmpty {
+                    BrandTag(text: questData.brand_name)
+                }
+                if !questData.category.isEmpty {
+                    CategoryTag(text: questData.category.uppercased())
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, SQMetric.contentGutter)
+            .padding(.top, 8)
+
+            // Solid purple divider
+            Divider()
+                .overlay(SQColor.purple700.opacity(0.2))
+                .padding(.top, 7)
+
+            // Shortcut row
+            HStack(spacing: 8) {
+                ShortcutGroup(keys: ["⌘", "⌃", "O"], label: "Open", flashing: openKeycapFlash)
+                ShortcutGroup(keys: ["⌘", "⌃", "D"], label: "Skip", flashing: dismissKeycapFlash)
+                Spacer(minLength: 0)
+            }
+            .padding(.top, 6)
+            .padding(.leading, SQMetric.contentGutter)
+        }
+    }
+
+    // MARK: — Close button (circular, black 0.06 bg)
 
     private var closeButton: some View {
-        VStack {
-            HStack {
-                Spacer()
-                Button(action: onDismiss) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(SQColor.keycapBg)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                    .stroke(SQColor.inkPale, lineWidth: 0.8)
-                            )
-                            .frame(width: 18, height: 18)
-                        Text("×")
-                            .font(SQFont.inter(13, weight: .medium))
-                            .foregroundColor(SQColor.inkSoft)
-                    }
-                }
-                .buttonStyle(PlainButtonStyle())
-                .padding(.top, 14)
-                .padding(.trailing, 14)
-            }
-            Spacer()
+        Button(action: onDismiss) {
+            Text("×")
+                .font(SQFont.inter(13, weight: .regular))
+                .foregroundColor(SQColor.ink3)
+                .frame(width: SQMetric.closeSize, height: SQMetric.closeSize)
+                .background(Circle().fill(Color.black.opacity(0.06)))
+                .offset(y: -1)
         }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+        .padding(.top, 8)
+        .padding(.trailing, 8)
     }
 
-    // MARK: - Gold Timer Bar
+    // MARK: — Timer bar (trailing-anchored partial-width gradient)
 
     private var timerBar: some View {
-        VStack(spacing: 0) {
-            Spacer()
-            TimelineView(.animation) { context in
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        // Track
-                        Rectangle()
-                            .fill(SQColor.goldDeep.opacity(0.22))
-                            .frame(height: SQMetric.timerBarHeight)
-
-                        // Fill — solid gold (gradient disabled on macOS 26 Metal)
-                        Rectangle()
-                            .fill(SQColor.gold)
-                            .frame(
-                                width: geo.size.width * currentProgress(at: context.date),
-                                height: SQMetric.timerBarHeight
-                            )
-                    }
-                }
+        TimelineView(.animation) { context in
+            let p = currentProgress(at: context.date)
+            GeometryReader { _ in
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [SQColor.gold500, SQColor.gold300],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(height: SQMetric.timerHeight)
+                    .scaleEffect(x: p, y: 1, anchor: .trailing)
+                    .clipShape(
+                        UnevenRoundedRectangle(
+                            topLeadingRadius: 0,
+                            bottomLeadingRadius: 7,
+                            bottomTrailingRadius: 0,
+                            topTrailingRadius: 0,
+                            style: .continuous
+                        )
+                    )
             }
-            .frame(height: SQMetric.timerBarHeight)
-            .allowsHitTesting(false)
+            .frame(height: SQMetric.timerHeight)
         }
-        .clipShape(RoundedRectangle(cornerRadius: SQMetric.outerCorner, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .padding(.leading, SQMetric.timerEdgeInset)
+        .padding(.trailing, SQMetric.timerRightInset)
+        .padding(.bottom, SQMetric.timerEdgeInset)
+        .allowsHitTesting(false)
     }
+}
 
-    // MARK: - Shortcut Cluster
+// MARK: - Pixel bracket (L-shape; 3pt pixels; 10×10pt total)
 
-    private func shortcutCluster(keys: [String], label: String, flash: Binding<Bool>) -> some View {
+private struct PixelBracket: View {
+    var body: some View {
+        Canvas { ctx, _ in
+            let p: CGFloat = 3
+            let gold = SQColor.gold500
+            // Top row: 3 pixels
+            for i in 0..<3 {
+                ctx.fill(
+                    Path(CGRect(x: CGFloat(i) * p, y: 0, width: p, height: p)),
+                    with: .color(gold)
+                )
+            }
+            // Left column: 2 additional pixels below top-left
+            for i in 1..<3 {
+                ctx.fill(
+                    Path(CGRect(x: 0, y: CGFloat(i) * p, width: p, height: p)),
+                    with: .color(gold)
+                )
+            }
+        }
+        .frame(width: SQMetric.pixelCornerSize, height: SQMetric.pixelCornerSize)
+        .drawingGroup()
+    }
+}
+
+// MARK: - Brand tag (purple pill w/ square bullet)
+
+private struct BrandTag: View {
+    let text: String
+    var body: some View {
+        HStack(spacing: 5) {
+            Rectangle()
+                .fill(SQColor.purple800)
+                .frame(width: 4, height: 4)
+                .offset(y: -1)
+            Text(text)
+                .font(SQFont.inter(10.5, weight: .semibold))
+                .tracking(0.2)
+                .foregroundColor(SQColor.purple800)
+        }
+        .padding(.horizontal, 7)
+        .frame(height: SQMetric.tagHeight)
+        .background(SQColor.purple700.opacity(0.08))
+        .overlay(
+            RoundedRectangle(cornerRadius: 2)
+                .strokeBorder(SQColor.purple700.opacity(0.35), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 2))
+    }
+}
+
+// MARK: - Category tag (gold gradient pill w/ pixel text)
+
+private struct CategoryTag: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(SQFont.pixel(6.5))
+            .tracking(0.5)
+            .foregroundColor(SQColor.purple800)
+            .padding(.horizontal, 6)
+            .frame(height: SQMetric.tagHeight)
+            .background(
+                LinearGradient(
+                    colors: [SQColor.gold300, SQColor.gold400],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 2)
+                    .strokeBorder(SQColor.gold500, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 2))
+    }
+}
+
+// MARK: - Shortcut group (3 keycaps + verb)
+
+private struct ShortcutGroup: View {
+    let keys: [String]
+    let label: String
+    let flashing: Bool
+    var body: some View {
         HStack(spacing: 6) {
-            HStack(spacing: 3) {
-                ForEach(keys.indices, id: \.self) { idx in
-                    Keycap(text: keys[idx], flashing: flash.wrappedValue)
+            HStack(spacing: 2) {
+                ForEach(keys, id: \.self) { k in
+                    KeyCap(glyph: k, flashing: flashing)
                 }
             }
             Text(label)
-                .font(SQFont.inter(10, weight: .medium))
-                .foregroundColor(SQColor.inkMute)
+                .font(SQFont.inter(11, weight: .regular))
+                .foregroundColor(SQColor.ink3)
         }
     }
 }
 
-// MARK: - Noise Overlay (deterministic dot grid via SwiftUI primitives)
+// MARK: - Keycap (18×18 square, Inter 10pt medium)
 
-private struct NoiseOverlay: View {
-    var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .topLeading) {
-                let spacing: CGFloat = 7
-                let dot: CGFloat = 1.5
-                let cols = Int(geo.size.width / spacing) + 1
-                let rows = Int(geo.size.height / spacing) + 1
-                ForEach(0..<rows, id: \.self) { r in
-                    ForEach(0..<cols, id: \.self) { c in
-                        Circle()
-                            .fill(SQColor.noiseDot)
-                            .frame(width: dot, height: dot)
-                            .offset(
-                                x: CGFloat(c) * spacing + CGFloat((r * 31 + c * 17) % 3) - 1,
-                                y: CGFloat(r) * spacing
-                            )
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Pixel L-Bracket Ornament (ZStack of Rectangles)
-
-private struct PixelLBracket: View {
-    enum Corner { case topLeading, topTrailing, bottomLeading, bottomTrailing }
-    let corner: Corner
-
-    var body: some View {
-        // 4x4 grid of pixel blocks (SwiftUI primitives — no Canvas).
-        let u = SQMetric.pixelUnit
-        let blocks: [(CGFloat, CGFloat)]
-        switch corner {
-        case .topLeading:
-            blocks = [(0,0), (1,0), (2,0), (3,0), (0,1), (0,2), (0,3)]
-        case .topTrailing:
-            blocks = [(0,0), (1,0), (2,0), (3,0), (3,1), (3,2), (3,3)]
-        case .bottomLeading:
-            blocks = [(0,0), (0,1), (0,2), (0,3), (1,3), (2,3), (3,3)]
-        case .bottomTrailing:
-            blocks = [(3,0), (3,1), (3,2), (3,3), (0,3), (1,3), (2,3)]
-        }
-        return ZStack(alignment: .topLeading) {
-            ForEach(0..<blocks.count, id: \.self) { i in
-                let (bx, by) = blocks[i]
-                Rectangle()
-                    .fill(SQColor.gold)
-                    .frame(width: u, height: u)
-                    .offset(x: bx * u, y: by * u)
-            }
-        }
-        .frame(width: u * 4, height: u * 4, alignment: .topLeading)
-    }
-}
-
-// MARK: - Dashed Separator (rectangle grid — avoids Canvas)
-
-private struct DashedSeparator: View {
-    var body: some View {
-        GeometryReader { geo in
-            HStack(spacing: 3) {
-                ForEach(0..<Int(geo.size.width / 6), id: \.self) { _ in
-                    Rectangle()
-                        .fill(SQColor.separator)
-                        .frame(width: 3, height: 1)
-                }
-            }
-        }
-        .frame(height: 1)
-    }
-}
-
-// MARK: - Keycap
-
-private struct Keycap: View {
-    let text: String
+private struct KeyCap: View {
+    let glyph: String
     let flashing: Bool
-
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: SQMetric.keycapRadius, style: .continuous)
-                .fill(flashing ? SQColor.keycapFlash : SQColor.keycapBg)
-                .overlay(
-                    RoundedRectangle(cornerRadius: SQMetric.keycapRadius, style: .continuous)
-                        .stroke(SQColor.inkPale.opacity(0.7), lineWidth: 0.7)
-                )
-            Text(text)
-                .font(SQFont.inter(9, weight: .medium))
-                .foregroundColor(SQColor.ink)
+        Text(glyph)
+            .font(SQFont.inter(10, weight: .medium))
+            .foregroundColor(SQColor.ink2)
+            .frame(width: SQMetric.keyCapSize, height: SQMetric.keyCapSize)
+            .background(flashing ? SQColor.keycapFlash : Color.white.opacity(0.6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(Color.black.opacity(0.14), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+}
+
+// MARK: - Parchment dot overlay (subtle texture)
+
+private struct ParchmentDots: View {
+    var body: some View {
+        Canvas { ctx, size in
+            let step: CGFloat = 6
+            let dot: CGFloat = 1.2
+            let color = SQColor.purple700.opacity(0.04)
+            var y: CGFloat = 0
+            while y < size.height {
+                var x: CGFloat = 0
+                while x < size.width {
+                    ctx.fill(
+                        Path(ellipseIn: CGRect(x: x, y: y, width: dot, height: dot)),
+                        with: .color(color)
+                    )
+                    x += step
+                }
+                y += step
+            }
         }
-        .frame(width: SQMetric.keycapWidth, height: SQMetric.keycapHeight)
+        .allowsHitTesting(false)
     }
 }
 
@@ -374,12 +401,12 @@ struct SideQuestCard_Previews: PreviewProvider {
             SideQuestCard(
                 questData: QuestData(
                     quest_id: "prev-1",
-                    display_text: "Speed Up Your PostgreSQL Queries",
-                    subtitle: "Index optimization tips tailored to your schema",
+                    display_text: "Speed up your Postgres queries",
+                    subtitle: "Drop-in connection pooler — 10× faster reads, zero config.",
                     tracking_url: "https://example.com",
                     reward_amount: 250,
                     brand_name: "Supabase",
-                    category: "DevTool"
+                    category: "DEVTOOL"
                 ),
                 onOpen: {},
                 onDismiss: {},
@@ -389,11 +416,12 @@ struct SideQuestCard_Previews: PreviewProvider {
             SideQuestCard(
                 questData: QuestData(
                     quest_id: "prev-2",
-                    display_text: "Instant Feature Flags for Your API",
+                    display_text: "Instant feature flags for your API",
+                    subtitle: "Ship safely with targeted rollouts, zero config.",
                     tracking_url: "https://example.com",
                     reward_amount: 150,
                     brand_name: "LaunchDarkly",
-                    category: "Tooling"
+                    category: "TOOLING"
                 ),
                 onOpen: {},
                 onDismiss: {},
