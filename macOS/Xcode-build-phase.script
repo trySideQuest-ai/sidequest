@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# Xcode Build Phase Script for Automatic Code Signing
+#
+# Add this as a Run Script build phase in Xcode:
+#   1. Open SideQuestApp.xcodeproj in Xcode
+#   2. Select target: SideQuestApp
+#   3. Go to Build Phases tab
+#   4. Click + button and select "New Run Script Phase"
+#   5. Paste this entire script into the script text area
+#   6. Adjust USE_DEVELOPER_ID (0 for development, 1 for production) as needed
+#
+# This script runs AFTER each build, automatically signing the app bundle
+# with either ad-hoc signing (development) or Developer ID (production).
+
+set -euo pipefail
+
+# Configuration: Set to 1 for Developer ID production signing, 0 for ad-hoc development
+USE_DEVELOPER_ID=0
+
+# Hardened runtime is always enabled
+SIGN_OPTIONS="--options runtime --timestamp --verbose"
+
+if [ "$USE_DEVELOPER_ID" -eq 1 ]; then
+  # Production: Find Developer ID in Keychain
+  DEVELOPER_ID=$(security find-identity -v -p codesigning 2>/dev/null | grep "Developer ID Application" | awk -F'"' '{print $2}' | head -1)
+
+  if [ -z "$DEVELOPER_ID" ]; then
+    echo "ERROR: Developer ID Application certificate not found in Keychain"
+    echo "To use Developer ID signing, generate a certificate in Apple Developer account:"
+    echo "  1. Log into https://developer.apple.com/account"
+    echo "  2. Navigate to Certificates > Identifiers & Profiles"
+    echo "  3. Create a new 'Developer ID Application' certificate"
+    echo "  4. Download and install the certificate in Keychain"
+    exit 1
+  fi
+
+  codesign -s "$DEVELOPER_ID" $SIGN_OPTIONS "$BUILT_PRODUCTS_DIR/$EXECUTABLE_PATH"
+  echo "✓ Signed with Developer ID: $DEVELOPER_ID"
+else
+  # Development: Ad-hoc signing (no certificate needed)
+  codesign -s - $SIGN_OPTIONS "$BUILT_PRODUCTS_DIR/$EXECUTABLE_PATH"
+  echo "✓ Signed with ad-hoc identity (development)"
+fi
+
+# Verify signature
+codesign -v "$BUILT_PRODUCTS_DIR/$EXECUTABLE_PATH"
+echo "✓ Signature verified"

@@ -1,0 +1,87 @@
+{
+  "files": {
+    "package.json": {
+      "base_tag": "javascript",
+      "dependency_keys": ["dependencies", "devDependencies"],
+      "dep_patterns": {
+        "react": "react",
+        "next": "nextjs",
+        "express": "express",
+        "pg": "postgresql",
+        "jest": "jest",
+        "typescript": "typescript",
+        "vue": "vue",
+        "angular": "angular",
+        "svelte": "svelte",
+        "fastify": "fastify",
+        "tailwindcss": "tailwindcss",
+        "mongoose": "mongodb",
+        "redis": "redis",
+        "webpack": "webpack",
+        "vite": "vite",
+        "mysql2": "mysql",
+        "graphql": "graphql",
+        "stripe": "billing",
+        "playwright": "playwright",
+        "cypress": "cypress"
+      }
+    },
+    "pyproject.toml": {
+      "base_tag": "python",
+      "content_patterns": {
+        "django": "django",
+        "flask": "flask",
+        "pytest": "pytest",
+        "celery": "background_jobs",
+        "fastapi": "rest_api",
+        "sqlalchemy": "sql"
+      }
+    },
+    "requirements.txt": {
+      "base_tag": "python",
+      "content_patterns": {
+        "django": "django",
+        "flask": "flask",
+        "celery": "background_jobs",
+        "fastapi": "rest_api",
+        "pytest": "pytest",
+        "sqlalchemy": "sql"
+      }
+    },
+    "go.mod": {
+      "base_tag": "go",
+      "content_patterns": {
+        "gin-gonic": "rest_api",
+        "gorm": "sql",
+        "pgx": "postgresql"
+      }
+    },
+    "Cargo.toml": {
+      "base_tag": "rust",
+      "content_patterns": {
+        "actix": "rest_api",
+        "tokio": "rust",
+        "diesel": "sql",
+        "sqlx": "sql"
+      }
+    },
+    "Gemfile": {
+      "base_tag": "ruby",
+      "content_patterns": {
+        "rails": "rails",
+        "sidekiq": "background_jobs",
+        "rspec": "testing",
+        "pg": "postgresql"
+      }
+    },
+    "composer.json": {
+      "base_tag": "php",
+      "dependency_keys": ["require", "require-dev"],
+      "dep_patterns": {
+        "laravel": "php",
+        "phpunit": "testing",
+        "stripe": "billing"
+      }
+    }
+  }
+}

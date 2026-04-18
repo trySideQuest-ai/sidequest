@@ -1,0 +1,112 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'plugin-v*'
+
+env:
+  AWS_REGION: us-east-1
+  S3_BUCKET: sidequest-releases
+  DISTRIBUTION_ID: E2J2MF0TAZ6G7F
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/plugin-v}" >> $GITHUB_ENV
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Package plugin
+        run: |
+          bash scripts/package-plugin.sh --version "$VERSION"
+          TARBALL=$(find . -name "sidequest-plugin-${VERSION}.tar.gz" -o -name "*plugin*${VERSION}*.tar.gz" | head -1)
+          if [ -z "$TARBALL" ]; then
+            echo "Error: Could not find plugin tarball for version $VERSION"
+            exit 1
+          fi
+          SHA256=$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)
+          echo "PLUGIN_SHA256=$SHA256" >> $GITHUB_ENV
+          echo "PLUGIN_TARBALL=$TARBALL" >> $GITHUB_ENV
+          echo "Tarball: $TARBALL"
+          echo "SHA256: $SHA256"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-oidc-sidequest-releases
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload to S3
+        run: |
+          FILENAME=$(basename "${{ env.PLUGIN_TARBALL }}")
+          aws s3 cp "${{ env.PLUGIN_TARBALL }}" \
+            "s3://${S3_BUCKET}/${FILENAME}" \
+            --acl public-read
+          echo "Uploaded to s3://${S3_BUCKET}/${FILENAME}"
+
+      - name: Invalidate CloudFront
+        run: |
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id "${{ env.DISTRIBUTION_ID }}" \
+            --paths "/sidequest-plugin-*.tar.gz" "/install.sh" "/setup.sh" \
+            --query 'Invalidation.Id' \
+            --output text)
+
+          echo "Invalidation ID: $INVALIDATION_ID"
+
+          # Poll for completion (timeout after 5 minutes)
+          TIMEOUT=300
+          ELAPSED=0
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            STATUS=$(aws cloudfront get-invalidation \
+              --distribution-id "${{ env.DISTRIBUTION_ID }}" \
+              --id "$INVALIDATION_ID" \
+              --query 'Invalidation.Status' \
+              --output text)
+
+            if [ "$STATUS" = "Completed" ]; then
+              echo "CloudFront invalidation completed successfully"
+              exit 0
+            fi
+
+            echo "Invalidation status: $STATUS (waiting...)"
+            sleep 10
+            ELAPSED=$((ELAPSED + 10))
+          done
+
+          echo "CloudFront invalidation polling timeout"
+          exit 1
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.PLUGIN_TARBALL }}
+          body: |
+            ## Plugin v${{ env.VERSION }}
+
+            **SHA256:** `${{ env.PLUGIN_SHA256 }}`
+
+            **Download:**
+            ```
+            https://get.trysidequest.ai/sidequest-plugin-${{ env.VERSION }}.tar.gz
+            ```
+
+            **Verify integrity:**
+            ```bash
+            shasum -a 256 sidequest-plugin-${{ env.VERSION }}.tar.gz
+            # Should match: ${{ env.PLUGIN_SHA256 }}
+            ```
+          draft: false
+          prerelease: false

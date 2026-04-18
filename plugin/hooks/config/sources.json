@@ -1,0 +1,13 @@
+{
+  "weights": {
+    "conversation": 1.0,
+    "diff": 0.7,
+    "git_metadata": 0.4,
+    "config": 0.4
+  },
+  "limits": {
+    "max_diff_bytes": 51200,
+    "max_conversation_entries": 100,
+    "max_output_tags": 20
+  }
+}

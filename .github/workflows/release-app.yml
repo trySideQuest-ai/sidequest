@@ -1,0 +1,169 @@
+name: Release App
+
+on:
+  push:
+    tags:
+      - 'app-v*'
+
+env:
+  AWS_REGION: us-east-1
+  S3_BUCKET: sidequest-releases
+  DISTRIBUTION_ID: E2J2MF0TAZ6G7F
+
+jobs:
+  release:
+    runs-on: macos-14
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/app-v}" >> $GITHUB_ENV
+
+      - name: Select Xcode version
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.3'
+
+      - name: Verify Xcode version
+        run: xcodebuild -version
+
+      - name: Import code-signing certificate
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
+          p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          keychain-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+
+      - name: Build app
+        run: |
+          cd macOS
+          xcodebuild -scheme SideQuestApp \
+            -configuration Release \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            build
+
+          # Find the built app
+          APP_PATH="build/DerivedData/Build/Products/Release/SideQuestApp.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "Error: App not found at $APP_PATH"
+            exit 1
+          fi
+          echo "App built successfully: $APP_PATH"
+
+      - name: Create DMG
+        run: |
+          cd macOS
+          APP_PATH="build/DerivedData/Build/Products/Release/SideQuestApp.app"
+          bash scripts/create-dmg.sh "$APP_PATH" "SideQuestApp-${{ env.VERSION }}.dmg"
+
+          # Verify DMG exists
+          if [ ! -f "SideQuestApp-${{ env.VERSION }}.dmg" ]; then
+            echo "Error: DMG not created"
+            exit 1
+          fi
+          echo "DMG created: SideQuestApp-${{ env.VERSION }}.dmg"
+
+      - name: Notarize DMG
+        run: |
+          cd macOS
+          bash scripts/notarize.sh "SideQuestApp-${{ env.VERSION }}.dmg" 30m
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+
+      - name: Move DMG to repo root for upload
+        run: |
+          mv macOS/SideQuestApp-${{ env.VERSION }}.dmg .
+          ls -lh SideQuestApp-${{ env.VERSION }}.dmg
+
+      - name: Calculate SHA256
+        run: |
+          SHA256=$(shasum -a 256 SideQuestApp-${{ env.VERSION }}.dmg | cut -d' ' -f1)
+          echo "APP_SHA256=$SHA256" >> $GITHUB_ENV
+          echo "SHA256: $SHA256"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-oidc-sidequest-releases
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp SideQuestApp-${{ env.VERSION }}.dmg \
+            s3://${S3_BUCKET}/SideQuestApp-${{ env.VERSION }}.dmg \
+            --acl public-read
+          echo "Uploaded to s3://${S3_BUCKET}/SideQuestApp-${{ env.VERSION }}.dmg"
+
+      - name: Invalidate CloudFront
+        run: |
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id "${{ env.DISTRIBUTION_ID }}" \
+            --paths "/SideQuestApp-*.dmg" "/setup.sh" \
+            --query 'Invalidation.Id' \
+            --output text)
+
+          echo "Invalidation ID: $INVALIDATION_ID"
+
+          # Poll for completion (timeout after 5 minutes)
+          TIMEOUT=300
+          ELAPSED=0
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            STATUS=$(aws cloudfront get-invalidation \
+              --distribution-id "${{ env.DISTRIBUTION_ID }}" \
+              --id "$INVALIDATION_ID" \
+              --query 'Invalidation.Status' \
+              --output text)
+
+            if [ "$STATUS" = "Completed" ]; then
+              echo "CloudFront invalidation completed successfully"
+              exit 0
+            fi
+
+            echo "Invalidation status: $STATUS (waiting...)"
+            sleep 10
+            ELAPSED=$((ELAPSED + 10))
+          done
+
+          echo "CloudFront invalidation polling timeout"
+          exit 1
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-v${{ env.VERSION }}
+          name: App v${{ env.VERSION }}
+          body: |
+            ## SideQuest App v${{ env.VERSION }}
+
+            **SHA256:** `${{ env.APP_SHA256 }}`
+
+            **Download:**
+            ```
+            https://get.trysidequest.ai/SideQuestApp-${{ env.VERSION }}.dmg
+            ```
+
+            **Verify integrity:**
+            ```bash
+            shasum -a 256 SideQuestApp-${{ env.VERSION }}.dmg
+            # Should match: ${{ env.APP_SHA256 }}
+            ```
+
+            **Notarization:** Submitted to Apple Notary Service and approved. This app is safe to run on macOS with Gatekeeper enabled.
+
+            **Installation:**
+            1. Download the DMG
+            2. Mount it: `hdiutil attach SideQuestApp-${{ env.VERSION }}.dmg`
+            3. Drag SideQuestApp to /Applications
+            4. Eject the DMG
+            5. Launch from Applications folder
+          draft: false
+          prerelease: false
+          files: |
+            SideQuestApp-${{ env.VERSION }}.dmg
