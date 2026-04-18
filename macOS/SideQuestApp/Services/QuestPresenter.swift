@@ -145,7 +145,7 @@ final class QuestPresenter: ObservableObject {
         dismissRemaining = top.duration
         timerStartDate = Date()
         dismissTimer = Timer.scheduledTimer(withTimeInterval: top.duration, repeats: false) { [weak self] _ in
-            Task { @MainActor in self?.dismissTop() }
+            Task { @MainActor [weak self] in self?.dismissTop() }
         }
     }
 
@@ -169,7 +169,7 @@ final class QuestPresenter: ObservableObject {
             dismissRemaining = resumeIn
             timerStartDate = Date()
             dismissTimer = Timer.scheduledTimer(withTimeInterval: resumeIn, repeats: false) { [weak self] _ in
-                Task { @MainActor in self?.dismissTop() }
+                Task { @MainActor [weak self] in self?.dismissTop() }
             }
         }
     }
