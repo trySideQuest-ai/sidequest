@@ -1,0 +1,412 @@
+#!/usr/bin/env bash
+
+# SideQuest Stop Hook — Quest Timing Redesign
+# Phase 19: Two triggers (git commit OR 10min gap), hard caps (20min cooldown, 5/day)
+# Two-layer context extraction (static + dynamic), IPC socket connection test
+# ALL failures exit 0 silently — user never sees errors.
+
+# Validate python3 exists (required for JSON parsing and file I/O)
+command -v python3 >/dev/null 2>&1 || exit 0
+
+# ============================================================================
+# PHASE 1: Load config and establish error logging
+# ============================================================================
+
+CONFIG_FILE="$HOME/.sidequest/config.json"
+if [ ! -f "$CONFIG_FILE" ]; then
+  CONFIG_FILE="${CLAUDE_PLUGIN_DATA}/config.json"
+  if [ ! -f "$CONFIG_FILE" ]; then
+    exit 0
+  fi
+fi
+
+# Error logging helper
+log_error() {
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $1" >> "$HOME/.sidequest/hook-errors.log" 2>/dev/null
+  # Truncate log if over 100KB to prevent disk bloat
+  if [ -f "$HOME/.sidequest/hook-errors.log" ]; then
+    SIZE=$(stat -f%z "$HOME/.sidequest/hook-errors.log" 2>/dev/null || echo 0)
+    if [ "$SIZE" -gt 102400 ]; then
+      tail -n 500 "$HOME/.sidequest/hook-errors.log" > "$HOME/.sidequest/hook-errors.log.tmp"
+      mv "$HOME/.sidequest/hook-errors.log.tmp" "$HOME/.sidequest/hook-errors.log" 2>/dev/null
+    fi
+  fi
+}
+
+# Read config (use python3 for reliable JSON parsing)
+eval "$(python3 -c "
+import json, shlex, sys
+try:
+    with open(sys.argv[1]) as f:
+        c = json.load(f)
+    print(f'TOKEN={shlex.quote(str(c.get(\"token\",\"\")))}')
+    print(f'ENABLED={shlex.quote(str(c.get(\"enabled\",True)).lower())}')
+    print(f'API_BASE={shlex.quote(str(c.get(\"api_base\",\"\")))}')
+    print(f'DO_NOT_DISTURB={shlex.quote(str(c.get(\"do_not_disturb\",\"\")))}')
+except Exception as e:
+    import sys
+    print('ERROR_CONFIG=parse_failed')
+" "$CONFIG_FILE" 2>/dev/null)"
+
+if [ "$ERROR_CONFIG" = "parse_failed" ]; then
+  log_error "Config parse error: $CONFIG_FILE"
+  exit 0
+fi
+
+if [ -z "$TOKEN" ]; then
+  exit 0
+fi
+
+if [ "$ENABLED" = "false" ]; then
+  exit 0
+fi
+
+# Check Do Not Disturb mode
+if [ -n "$DO_NOT_DISTURB" ]; then
+  NOW=$(date +%s)
+  if [ "$NOW" -lt "$DO_NOT_DISTURB" ]; then
+    exit 0
+  fi
+fi
+
+API_BASE="${API_BASE:-https://api.trysidequest.ai}"
+
+# ============================================================================
+# PHASE 2: Load timing state (atomic read)
+# ============================================================================
+
+# Acquire exclusive lock on timing state — if another hook instance holds it, skip this quest
+# Use mkdir-based lock (POSIX-compatible — flock is Linux-only, not available on macOS)
+LOCK_DIR="$HOME/.sidequest/timing-state.lock"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  # Lock exists — check if stale (>30s = hook crashed without cleanup)
+  if [ -d "$LOCK_DIR" ]; then
+    LOCK_AGE=$(( $(date +%s) - $(stat -f%m "$LOCK_DIR" 2>/dev/null || echo 0) ))
+    if [ "$LOCK_AGE" -gt 30 ]; then
+      rmdir "$LOCK_DIR" 2>/dev/null || true
+      mkdir "$LOCK_DIR" 2>/dev/null || exit 0
+    else
+      exit 0
+    fi
+  else
+    exit 0
+  fi
+fi
+trap 'rmdir "$LOCK_DIR" 2>/dev/null' EXIT
+
+TIMING_FILE="$HOME/.sidequest/timing-state.json"
+CURRENT_TIME=$(date +%s)
+LAST_HOOK_FIRE=0
+LAST_QUEST_SHOWN=0
+DAILY_QUEST_COUNT=0
+DAILY_RESET_DATE=""
+
+if [ -f "$TIMING_FILE" ]; then
+  eval "$(python3 -c "
+import json, shlex, sys, time
+try:
+    with open(sys.argv[1]) as f:
+        t = json.load(f)
+    print(f'LAST_HOOK_FIRE={t.get(\"last_hook_fire\",0)}')
+    print(f'LAST_QUEST_SHOWN={t.get(\"last_quest_shown\",0)}')
+    print(f'DAILY_QUEST_COUNT={t.get(\"daily_quest_count\",0)}')
+    print(f'DAILY_RESET_DATE={shlex.quote(str(t.get(\"daily_reset_date\",\"\")))}')
+except:
+    pass
+" "$TIMING_FILE" 2>/dev/null)"
+fi
+
+# ============================================================================
+# PHASE 3: Check triggers (git commit OR 10min gap)
+# ============================================================================
+
+# Trigger (a): Check for git commit since last hook fire
+GIT_TRIGGER=0
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  # We're in a git repo — check for recent commits
+  LAST_COMMIT_TIME=$(git log -1 --format=%ct 2>/dev/null || echo 0)
+  if [ "$LAST_COMMIT_TIME" -gt "$LAST_HOOK_FIRE" ]; then
+    GIT_TRIGGER=1
+  fi
+fi
+
+# Trigger (b): Check if >10 minutes have elapsed since last hook fire
+TIME_SINCE_LAST_HOOK=$((CURRENT_TIME - LAST_HOOK_FIRE))
+TIME_TRIGGER=0
+if [ "$TIME_SINCE_LAST_HOOK" -gt 600 ]; then
+  TIME_TRIGGER=1
+fi
+
+# If neither trigger fires, skip quest entirely
+if [ "$GIT_TRIGGER" -eq 0 ] && [ "$TIME_TRIGGER" -eq 0 ]; then
+  exit 0
+fi
+
+# Update last_hook_fire immediately — even if no quest is shown downstream,
+# the time trigger must not re-fire on every subsequent stop-hook invocation
+python3 -c "
+import json, os, tempfile
+timing_file = os.path.expanduser('~/.sidequest/timing-state.json')
+try:
+    with open(timing_file) as f:
+        state = json.load(f)
+except:
+    state = {}
+state['last_hook_fire'] = $CURRENT_TIME
+os.makedirs(os.path.dirname(timing_file), exist_ok=True)
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(timing_file))
+try:
+    with os.fdopen(fd, 'w') as f:
+        json.dump(state, f)
+    os.rename(tmp, timing_file)
+except:
+    try: os.unlink(tmp)
+    except: pass
+" 2>/dev/null
+
+# ============================================================================
+# PHASE 4: Load remote config (cached locally, fallback to defaults)
+# ============================================================================
+
+REMOTE_CONFIG_FILE="$HOME/.sidequest/remote-config.json"
+RC_ENABLED="true"
+RC_COOLDOWN_MINUTES=20
+RC_DAILY_CAP=5
+
+if [ -f "$REMOTE_CONFIG_FILE" ]; then
+  eval "$(python3 -c "
+import json, shlex, sys
+try:
+    with open(sys.argv[1]) as f:
+        rc = json.load(f)
+    print(f'RC_ENABLED={shlex.quote(str(rc.get(\"enabled\", True)).lower())}')
+    print(f'RC_COOLDOWN_MINUTES={int(rc.get(\"cooldown_minutes\", 20))}')
+    print(f'RC_DAILY_CAP={int(rc.get(\"daily_cap\", 5))}')
+except:
+    pass
+" "$REMOTE_CONFIG_FILE" 2>/dev/null)"
+fi
+
+# Kill switch: remote config can disable all quests globally
+if [ "$RC_ENABLED" = "false" ]; then
+  exit 0
+fi
+
+# ============================================================================
+# PHASE 4.5: Check hard caps (remote-configurable cooldown and daily limit)
+# ============================================================================
+
+# Cap 1: Min cooldown between quests (default 20min = 1200s)
+RC_COOLDOWN_SECONDS=$((RC_COOLDOWN_MINUTES * 60))
+TIME_SINCE_LAST_QUEST=$((CURRENT_TIME - LAST_QUEST_SHOWN))
+if [ "$TIME_SINCE_LAST_QUEST" -lt "$RC_COOLDOWN_SECONDS" ]; then
+  exit 0
+fi
+
+# Cap 2: Max quests per day (default 5)
+TODAY=$(date +%Y-%m-%d)
+if [ "$DAILY_RESET_DATE" != "$TODAY" ]; then
+  # New day — reset counter
+  DAILY_QUEST_COUNT=0
+  DAILY_RESET_DATE="$TODAY"
+fi
+if [ "$DAILY_QUEST_COUNT" -ge "$RC_DAILY_CAP" ]; then
+  exit 0
+fi
+
+# ============================================================================
+# PHASE 5: Deep context extraction (v1.7 data-driven pipeline)
+# Reads all 4 sources: conversation, diff content, git metadata, config cache
+# Patterns, weights, and domains are data in config/*.json — not code
+# ============================================================================
+
+SCRIPT_DIR_CTX="$(cd "$(dirname "$0")" && pwd)"
+CONTEXT_RESULT='{"weighted_tags":[],"domain":null}'
+
+# SRC-01: Read actual diff content (not just file names), capped at 50KB
+SIDEQUEST_DIFF=""
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  SIDEQUEST_DIFF=$(timeout 1 git diff HEAD~1 2>/dev/null | head -c 51200) || SIDEQUEST_DIFF=""
+fi
+export SIDEQUEST_DIFF
+
+# SRC-03: Read git branch name and most recent commit message
+SIDEQUEST_BRANCH=""
+SIDEQUEST_COMMIT_MSG=""
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  SIDEQUEST_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || SIDEQUEST_BRANCH=""
+  SIDEQUEST_COMMIT_MSG=$(git log -1 --format=%s 2>/dev/null) || SIDEQUEST_COMMIT_MSG=""
+fi
+export SIDEQUEST_BRANCH SIDEQUEST_COMMIT_MSG
+
+# SRC-02: Run full extraction (conversation + diff + git metadata + config cache)
+HISTORY_FILE="$HOME/.claude/history.jsonl"
+CONTEXT_RESULT=$(python3 "${SCRIPT_DIR_CTX}/extract-context.py" --mode full "$HISTORY_FILE" "$(pwd)" 2>/dev/null) || CONTEXT_RESULT='{"weighted_tags":[],"domain":null}'
+
+# SAFE-04: Unset diff content immediately — never persists beyond this script
+unset SIDEQUEST_DIFF SIDEQUEST_BRANCH SIDEQUEST_COMMIT_MSG
+
+# Flatten weighted tags to sorted slug array (highest-weight first)
+# Weights are used locally for prioritization — server gets flat tags like before
+CONTEXT_TAGS=$(python3 -c "
+import json, sys
+try:
+    result = json.loads(sys.argv[1])
+    tags = [t['tag'] for t in result.get('weighted_tags', [])]
+    print(json.dumps(tags))
+except:
+    print('[]')
+" "$CONTEXT_RESULT" 2>/dev/null) || CONTEXT_TAGS="[]"
+
+# Extract domain for analytics logging
+CONTEXT_DOMAIN=$(python3 -c "
+import json, sys
+try:
+    result = json.loads(sys.argv[1])
+    domain = result.get('domain')
+    print(domain if domain else '')
+except:
+    print('')
+" "$CONTEXT_RESULT" 2>/dev/null) || CONTEXT_DOMAIN=""
+
+# Inject domain as a context tag for matching (quests have domain tags at low weight)
+if [ -n "$CONTEXT_DOMAIN" ]; then
+  CONTEXT_TAGS=$(python3 -c "
+import json, sys
+tags = json.loads(sys.argv[1])
+domain_tag = 'domain_' + sys.argv[2]
+if domain_tag not in tags:
+    tags.append(domain_tag)
+print(json.dumps(tags))
+" "$CONTEXT_TAGS" "$CONTEXT_DOMAIN" 2>/dev/null) || true
+fi
+
+# ============================================================================
+# PHASE 6: Test IPC socket connection
+# ============================================================================
+
+SOCKET_PATH="$HOME/.sidequest/sidequest.sock"
+if [ ! -S "$SOCKET_PATH" ] || ! echo "" | nc -U -w1 "$SOCKET_PATH" 2>/dev/null; then
+  # Socket exists but app isn't responding — stale socket or hung app
+  log_error "Socket connection failed: $SOCKET_PATH"
+  exit 0
+fi
+
+# ============================================================================
+# PHASE 7: Fetch quest from API
+# ============================================================================
+
+# Build request body — flat tags sorted by weight + optional domain for analytics
+REQUEST_BODY=$(python3 -c "
+import json, sys
+body = {'context_tags': json.loads(sys.argv[1])}
+domain = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else None
+if domain:
+    body['domain'] = domain
+print(json.dumps(body))
+" "$CONTEXT_TAGS" "$CONTEXT_DOMAIN" 2>/dev/null) || REQUEST_BODY="{\"context_tags\":[]}"
+
+RESPONSE=$(curl -s --max-time 5 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d "$REQUEST_BODY" \
+  "${API_BASE}/quest" 2>/dev/null) || {
+  log_error "API call failed: $API_BASE/quest"
+  exit 0
+}
+
+# Check if response is empty or has no quest
+if [ -z "$RESPONSE" ] || [ "$RESPONSE" = "{}" ]; then
+  exit 0
+fi
+
+# Extract quest fields (use python3 for reliable JSON parsing)
+eval "$(echo "$RESPONSE" | python3 -c "
+import json, shlex, sys
+try:
+    r = json.load(sys.stdin)
+    for k in ('display_text','subtitle','tracking_url','quest_id','reward_amount','brand_name','category'):
+        v = r.get(k, '')
+        print(f'{k.upper()}={shlex.quote(str(v))}')
+except Exception as e:
+    import sys
+    print('ERROR_RESPONSE=parse_failed')
+" 2>/dev/null)"
+
+if [ "$ERROR_RESPONSE" = "parse_failed" ]; then
+  log_error "Quest response parse error"
+  exit 0
+fi
+
+if [ -z "$DISPLAY_TEXT" ] || [ -z "$TRACKING_URL" ]; then
+  exit 0
+fi
+
+# ============================================================================
+# PHASE 8: Send quest via IPC socket to native app
+# ============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+"${SCRIPT_DIR}/xpc-socket-helper.sh" "$QUEST_ID" "$QUEST_ID" "$DISPLAY_TEXT" "$SUBTITLE" "$TRACKING_URL" "${REWARD_AMOUNT:-250}" "${BRAND_NAME:-Unknown}" "${CATEGORY:-DevTool}" 2>/dev/null || {
+  log_error "Socket send failed for quest: $QUEST_ID"
+  exit 0
+}
+
+# Save last quest for retrigger skill (use ~/.sidequest/ so skills can find it)
+mkdir -p "$HOME/.sidequest" 2>/dev/null
+python3 -c "
+import json, sys, os, tempfile
+quest = {
+    'quest_id': sys.argv[1],
+    'display_text': sys.argv[2],
+    'subtitle': sys.argv[3],
+    'tracking_url': sys.argv[4],
+    'reward_amount': int(sys.argv[5]),
+    'brand_name': sys.argv[6],
+    'category': sys.argv[7]
+}
+temp_fd, temp_path = tempfile.mkstemp(dir=os.path.expanduser('~/.sidequest'))
+try:
+    with os.fdopen(temp_fd, 'w') as f:
+        json.dump(quest, f)
+    os.rename(temp_path, os.path.expanduser('~/.sidequest/last-quest.json'))
+except:
+    try: os.unlink(temp_path)
+    except: pass
+" "$QUEST_ID" "$DISPLAY_TEXT" "$SUBTITLE" "$TRACKING_URL" "${REWARD_AMOUNT:-250}" "${BRAND_NAME:-Unknown}" "${CATEGORY:-DevTool}" 2>/dev/null
+
+# ============================================================================
+# PHASE 9: Update timing state (atomic write)
+# ============================================================================
+
+NEW_DAILY_COUNT=$((DAILY_QUEST_COUNT + 1))
+
+python3 -c "
+import json
+import os
+import tempfile
+
+timing_state = {
+    'last_hook_fire': $CURRENT_TIME,
+    'last_quest_shown': $CURRENT_TIME,
+    'daily_quest_count': $NEW_DAILY_COUNT,
+    'daily_reset_date': '$TODAY'
+}
+
+# Atomic write: write to temp, then rename
+timing_file = os.path.expanduser('~/.sidequest/timing-state.json')
+os.makedirs(os.path.dirname(timing_file), exist_ok=True)
+temp_fd, temp_path = tempfile.mkstemp(dir=os.path.dirname(timing_file))
+try:
+    with os.fdopen(temp_fd, 'w') as f:
+        json.dump(timing_state, f)
+    os.rename(temp_path, timing_file)
+except:
+    try:
+        os.unlink(temp_path)
+    except:
+        pass
+" 2>/dev/null
+
+exit 0

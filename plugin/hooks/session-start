@@ -1,0 +1,311 @@
+#!/usr/bin/env bash
+
+# SideQuest SessionStart Hook — Phase 19 Simplified
+# Three concerns: DND guidance, auth status check, first-run detection
+# Layer 1 context extraction: read CLAUDE.md and package.json, cache tech tags
+# Uses hookSpecificOutput format (same as Superpowers plugin)
+
+set -euo pipefail
+
+# Validate python3 exists
+command -v python3 >/dev/null 2>&1 || exit 0
+
+# Unified config location first, then legacy
+CONFIG_FILE="$HOME/.sidequest/config.json"
+if [ ! -f "$CONFIG_FILE" ]; then
+  CONFIG_FILE="${CLAUDE_PLUGIN_DATA:-/dev/null}/config.json"
+fi
+
+# Use python3 for JSON output — handles Unicode correctly
+json_output() {
+  python3 -c "
+import json, sys
+context = sys.stdin.read()
+print(json.dumps({
+  'hookSpecificOutput': {
+    'hookEventName': 'SessionStart',
+    'additionalContext': context
+  }
+}, ensure_ascii=False))
+"
+}
+
+# ============================================================================
+# PHASE 1: Layer 1 Context Extraction (static, cached, data-driven)
+# Uses config/patterns.json for CLAUDE.md scanning, config/config-files.json
+# for project file detection (SRC-04: pyproject.toml, go.mod, Cargo.toml, etc.)
+# ============================================================================
+
+SCRIPT_DIR_PHASE1="$(cd "$(dirname "$0")" && pwd)"
+
+python3 -c "
+import json
+import os
+import re
+import sys
+import tempfile
+
+project_dir = os.getcwd()
+config_dir = sys.argv[1]
+tech_tags = []
+
+# Load config files
+with open(os.path.join(config_dir, 'patterns.json')) as f:
+    patterns_config = json.load(f)
+with open(os.path.join(config_dir, 'config-files.json')) as f:
+    config_files = json.load(f)
+
+# Build compiled patterns from patterns.json
+# Patterns are self-contained — they include their own \b boundaries where needed
+compiled_patterns = []
+for tag_def in patterns_config['tags']:
+    combined = '|'.join('(?:' + p + ')' for p in tag_def['patterns'])
+    compiled_patterns.append((re.compile(combined, re.IGNORECASE), tag_def['slug']))
+
+# Scan CLAUDE.md with patterns from patterns.json
+claude_md_path = os.path.join(project_dir, 'CLAUDE.md')
+if os.path.isfile(claude_md_path):
+    try:
+        with open(claude_md_path) as f:
+            content = f.read()
+        for regex, slug in compiled_patterns:
+            if regex.search(content):
+                tech_tags.append(slug)
+    except:
+        pass
+
+# Scan project config files using config-files.json (data-driven)
+for filename, rules in config_files.get('files', {}).items():
+    filepath = os.path.join(project_dir, filename)
+    if not os.path.isfile(filepath):
+        continue
+
+    # Base tag: file exists = this language is in play
+    tech_tags.append(rules['base_tag'])
+
+    try:
+        with open(filepath) as f:
+            content = f.read()
+
+        # JSON-based config files (package.json, composer.json)
+        dep_keys = rules.get('dependency_keys')
+        dep_patterns = rules.get('dep_patterns')
+        if dep_keys and dep_patterns:
+            pkg = json.loads(content)
+            deps = {}
+            for key in dep_keys:
+                deps.update(pkg.get(key, {}))
+            deps_str = ' '.join(deps.keys()).lower()
+            for pattern, tag in dep_patterns.items():
+                if pattern.lower() in deps_str:
+                    tech_tags.append(tag)
+
+        # Text-based config files (pyproject.toml, go.mod, Gemfile, etc.)
+        content_patterns = rules.get('content_patterns')
+        if content_patterns:
+            content_lower = content.lower()
+            for pattern, tag in content_patterns.items():
+                if pattern.lower() in content_lower:
+                    tech_tags.append(tag)
+    except:
+        pass
+
+# Deduplicate and cache
+tech_tags = list(set(tech_tags))[:15]
+tech_context = {'tags': tech_tags}
+
+# Atomic write to ~/.sidequest/tech-context.json
+tech_file = os.path.expanduser('~/.sidequest/tech-context.json')
+os.makedirs(os.path.dirname(tech_file), exist_ok=True)
+temp_fd, temp_path = tempfile.mkstemp(dir=os.path.dirname(tech_file))
+try:
+    with os.fdopen(temp_fd, 'w') as f:
+        json.dump(tech_context, f)
+    os.rename(temp_path, tech_file)
+except:
+    try:
+        os.unlink(temp_path)
+    except:
+        pass
+" "${SCRIPT_DIR_PHASE1}/config" 2>/dev/null
+
+# ============================================================================
+# PHASE 1.5: Fetch remote config from S3 (500ms timeout, cache fallback)
+# ============================================================================
+
+REMOTE_CONFIG_URL="https://get.trysidequest.ai/config.json"
+REMOTE_CONFIG_CACHE="$HOME/.sidequest/remote-config.json"
+
+python3 -c "
+import json, os, sys, tempfile
+try:
+    import urllib.request
+    req = urllib.request.Request(sys.argv[1])
+    with urllib.request.urlopen(req, timeout=0.5) as resp:
+        data = resp.read().decode()
+    # Validate JSON
+    parsed = json.loads(data)
+    # Atomic write to cache
+    cache_path = sys.argv[2]
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(cache_path))
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(parsed, f)
+        os.rename(tmp, cache_path)
+    except:
+        try: os.unlink(tmp)
+        except: pass
+except:
+    pass  # Silently fall back to cached version
+" "$REMOTE_CONFIG_URL" "$REMOTE_CONFIG_CACHE" 2>/dev/null
+
+# ============================================================================
+# PHASE 1.6: Auto-update check (compare local version to remote config)
+# ============================================================================
+
+SCRIPT_DIR_HOOK="$(cd "$(dirname "$0")" && pwd)"
+LOCAL_VERSION_FILE="$SCRIPT_DIR_HOOK/../VERSION"
+LOCAL_VERSION=""
+if [ -f "$LOCAL_VERSION_FILE" ]; then
+  LOCAL_VERSION=$(cat "$LOCAL_VERSION_FILE" 2>/dev/null | tr -d '[:space:]')
+fi
+
+python3 -c "
+import json, hashlib, os, shutil, sys, tarfile, tempfile
+
+cache_path = sys.argv[1]
+local_version = sys.argv[2]
+plugin_root = sys.argv[3]
+
+if not local_version or not os.path.isfile(cache_path):
+    sys.exit(0)
+
+try:
+    with open(cache_path) as f:
+        rc = json.load(f)
+except:
+    sys.exit(0)
+
+remote_version = rc.get('plugin_version', '')
+tarball_url = rc.get('plugin_tarball_url', '')
+expected_sha = rc.get('plugin_sha256', '')
+
+if not remote_version or not tarball_url or not expected_sha:
+    sys.exit(0)
+
+if remote_version == local_version:
+    sys.exit(0)
+
+# Version mismatch — download, verify, swap
+import urllib.request
+
+sidequest_dir = os.path.expanduser('~/.sidequest')
+os.makedirs(sidequest_dir, exist_ok=True)
+
+# Download tarball to temp file
+fd, tmp_tar = tempfile.mkstemp(suffix='.tar.gz', dir=sidequest_dir)
+try:
+    with urllib.request.urlopen(tarball_url, timeout=10) as resp:
+        data = resp.read()
+    with os.fdopen(fd, 'wb') as f:
+        f.write(data)
+
+    # SHA256 verification
+    sha = hashlib.sha256(data).hexdigest()
+    if sha != expected_sha:
+        os.unlink(tmp_tar)
+        sys.exit(0)  # Checksum mismatch — skip update silently
+
+    # Extract to temp directory
+    tmp_extract = tempfile.mkdtemp(dir=sidequest_dir)
+    with tarfile.open(tmp_tar, 'r:gz') as tar:
+        tar.extractall(tmp_extract)
+    os.unlink(tmp_tar)
+
+    # Find the extracted plugin directory
+    extracted_dirs = os.listdir(tmp_extract)
+    if len(extracted_dirs) != 1:
+        shutil.rmtree(tmp_extract)
+        sys.exit(0)
+    extracted_root = os.path.join(tmp_extract, extracted_dirs[0])
+
+    # Backup current hooks before swap
+    backup_dir = os.path.join(sidequest_dir, 'hooks.backup')
+    hooks_dir = os.path.join(plugin_root, 'hooks')
+    if os.path.isdir(hooks_dir):
+        if os.path.isdir(backup_dir):
+            shutil.rmtree(backup_dir)
+        shutil.copytree(hooks_dir, backup_dir)
+
+    # Atomic swap: copy new files over existing plugin
+    new_hooks = os.path.join(extracted_root, 'hooks')
+    if os.path.isdir(new_hooks):
+        for item in os.listdir(new_hooks):
+            src = os.path.join(new_hooks, item)
+            dst = os.path.join(hooks_dir, item)
+            if os.path.isdir(src):
+                if os.path.isdir(dst):
+                    shutil.rmtree(dst)
+                shutil.copytree(src, dst)
+            else:
+                shutil.copy2(src, dst)
+
+    # Copy other directories (skills, scripts, etc.)
+    for subdir in ['skills', 'scripts', '.claude-plugin']:
+        new_sub = os.path.join(extracted_root, subdir)
+        old_sub = os.path.join(plugin_root, subdir)
+        if os.path.isdir(new_sub):
+            if os.path.isdir(old_sub):
+                shutil.rmtree(old_sub)
+            shutil.copytree(new_sub, old_sub)
+
+    # Update VERSION file
+    new_version_file = os.path.join(extracted_root, 'VERSION')
+    if os.path.isfile(new_version_file):
+        shutil.copy2(new_version_file, os.path.join(plugin_root, 'VERSION'))
+
+    # Clean up temp extraction
+    shutil.rmtree(tmp_extract)
+
+except Exception:
+    try: os.unlink(tmp_tar)
+    except: pass
+    pass  # Silently fail — never break the session
+" "$REMOTE_CONFIG_CACHE" "$LOCAL_VERSION" "$SCRIPT_DIR_HOOK/.." 2>/dev/null
+
+# ============================================================================
+# PHASE 2: Check auth status and emit guidance
+# ============================================================================
+
+if [ -f "$CONFIG_FILE" ]; then
+  TOKEN=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('token',''))" "$CONFIG_FILE" 2>/dev/null || echo "")
+  if [ -n "$TOKEN" ]; then
+    # Logged in — emit three concerns: DND guidance, first-run detection
+
+    # First-run detection: check if timing-state.json exists
+    FIRST_RUN_GUIDANCE=""
+    TIMING_FILE="$HOME/.sidequest/timing-state.json"
+    if [ ! -f "$TIMING_FILE" ]; then
+      FIRST_RUN_GUIDANCE="Run /sidequest:status to see pipeline health and schedule your first quest."
+    fi
+
+    cat <<CONTEXT | json_output
+SideQuest is enabled and authenticated.
+
+**DND Guidance:** If you feel overwhelmed by quests, don't disable the plugin. Instead, use /sidequest:do-not-disturb to temporarily pause quests. You control the schedule.
+
+$FIRST_RUN_GUIDANCE
+CONTEXT
+    exit 0
+  fi
+fi
+
+# ============================================================================
+# PHASE 3: Not logged in — nudge to authenticate
+# ============================================================================
+
+GUIDANCE="SideQuest plugin installed but not authenticated. Run /sidequest:login to authenticate."
+
+echo "$GUIDANCE" | json_output
+exit 0

@@ -1,0 +1,12 @@
+{
+  "name": "sidequest",
+  "version": "0.1.0",
+  "description": "SideQuest — contextual quests inside your AI coding agent",
+  "author": {
+    "name": "SideQuest AI",
+    "email": "hello@trysidequest.ai"
+  },
+  "repository": "https://github.com/sidequest-ai/sidequest-plugin",
+  "license": "MIT",
+  "skills": "./skills/"
+}
