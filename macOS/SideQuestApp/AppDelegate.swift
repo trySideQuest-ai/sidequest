@@ -2,13 +2,16 @@ import AppKit
 import ApplicationServices
 import ServiceManagement
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     var apiClient: APIClient?
-    var windowManager: WindowManager?
     var stateManager: StateManager?
+    var eventQueue: EventQueue?
+    var questPresenter: QuestPresenter?
+    private var hotkeyManager: HotkeyManager?
+    private var panelController: QuestPanelController?
     private var ipcListener: IPCListener?
     private var sleepWorkspaceObserver: NSObjectProtocol?
-    var eventQueue: EventQueue?
     private var eventSyncManager: EventSyncManager?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -62,16 +65,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             ErrorHandler.logInfo("No auth token found. Run the SideQuest setup command or /sidequest:login to authenticate.")
         }
 
+        // Load bundled fonts for the fantasy card renderer
+        SQFontLoader.ensureLoaded()
+
         // Initialize services
         apiClient = APIClient(apiBaseURL: apiBase, bearerToken: bearerToken)
         stateManager = StateManager()
         eventQueue = EventQueue()
 
-        // Initialize WindowManager and wire dependencies
-        windowManager = WindowManager()
-        windowManager?.setAPIClient(apiClient!)
-        windowManager?.setEventQueue(eventQueue!)
-        windowManager?.setUserId(userId)
+        // Presenter stack: HotkeyManager + PanelController + QuestPresenter
+        hotkeyManager = HotkeyManager()
+        panelController = QuestPanelController()
+        questPresenter = QuestPresenter(
+            eventQueue: eventQueue!,
+            userId: userId,
+            hotkeyManager: hotkeyManager!,
+            panelController: panelController!
+        )
 
         // Initialize EventSyncManager
         eventSyncManager = EventSyncManager(apiClient: apiClient!, eventQueue: eventQueue!)
@@ -146,23 +156,22 @@ extension AppDelegate {
     func showTestQuest() {
         let testQuest = QuestData(
             quest_id: "test-123",
-            display_text: "Test Quest: Explore New Features",
+            display_text: "Speed Up Your PostgreSQL Queries",
+            subtitle: "Index tips tailored to your schema — 3 min read",
             tracking_url: "https://example.com",
             reward_amount: 250,
-            brand_name: "Test Corp",
+            brand_name: "Supabase",
             category: "DevTool"
         )
-        windowManager?.showQuest(testQuest)
+        questPresenter?.push(testQuest)
     }
 
     func fetchAndShowQuest() {
         guard let apiClient = apiClient else { return }
-        Task {
+        Task { @MainActor in
             do {
                 let quest = try await apiClient.fetchQuest()
-                await MainActor.run { [weak self] in
-                    self?.windowManager?.showQuest(quest)
-                }
+                self.questPresenter?.push(quest)
             } catch {
                 // Silent — quest won't display
             }
@@ -170,7 +179,7 @@ extension AppDelegate {
     }
 
     func handleDirectQuest(_ quest: QuestData) {
-        Task {
+        Task { @MainActor in
             if let stateManager = self.stateManager {
                 let shouldShow = await stateManager.shouldDisplayQuest()
                 if !shouldShow {
@@ -179,15 +188,12 @@ extension AppDelegate {
                 }
             }
             await self.stateManager?.recordDisplay()
-            await MainActor.run { [weak self] in
-                self?.windowManager?.showQuest(quest)
-            }
+            self.questPresenter?.push(quest)
         }
     }
 
     func handleIPCTrigger(questId: String, trackingId: String) {
-        Task {
-            // Check state manager for frequency/cooldown
+        Task { @MainActor in
             if let stateManager = self.stateManager {
                 let shouldShow = await stateManager.shouldDisplayQuest()
                 if !shouldShow {
@@ -203,13 +209,8 @@ extension AppDelegate {
 
             do {
                 let questData = try await apiClient.fetchQuest()
-
-                // Record display in state manager
                 await self.stateManager?.recordDisplay()
-
-                await MainActor.run { [weak self] in
-                    self?.windowManager?.showQuest(questData)
-                }
+                self.questPresenter?.push(questData)
             } catch {
                 ErrorHandler.logNetworkError(error, endpoint: "/quest")
             }
