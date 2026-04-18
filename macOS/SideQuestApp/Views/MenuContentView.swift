@@ -1,5 +1,4 @@
 import SwiftUI
-import Sparkle
 
 struct MenuContentView: View {
     var appDelegate: AppDelegate
@@ -7,7 +6,6 @@ struct MenuContentView: View {
     @State private var isEnabled = true
     @State private var isPaused = false
     @State private var pauseEndTime: Date?
-    @State private var updater: SPUUpdater?
 
     var body: some View {
         VStack {
@@ -52,19 +50,9 @@ struct MenuContentView: View {
 
             Divider()
 
-            Button("Check for Updates…") {
-                updater?.checkForUpdates()
-            }
-            .disabled(updater == nil || !updater!.canCheckForUpdates)
-
-            Divider()
-
             Button("Quit SideQuest") {
                 NSApplication.shared.terminate(nil)
             }
-        }
-        .onAppear {
-            self.updater = appDelegate.updater
         }
     }
 

@@ -22,17 +22,18 @@ jobs:
       - name: Extract version from tag
         run: echo "VERSION=${GITHUB_REF#refs/tags/plugin-v}" >> $GITHUB_ENV
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: '20'
+          python-version: '3.12'
 
       - name: Package plugin
         run: |
           bash scripts/package-plugin.sh --version "$VERSION"
-          TARBALL=$(find . -name "sidequest-plugin-${VERSION}.tar.gz" -o -name "*plugin*${VERSION}*.tar.gz" | head -1)
-          if [ -z "$TARBALL" ]; then
-            echo "Error: Could not find plugin tarball for version $VERSION"
+          TARBALL="dist/sidequest-plugin-${VERSION}.tar.gz"
+          if [ ! -f "$TARBALL" ]; then
+            echo "Error: Tarball not found at $TARBALL"
+            ls -la dist/ || true
             exit 1
           fi
           SHA256=$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)
@@ -55,17 +56,36 @@ jobs:
             --acl public-read
           echo "Uploaded to s3://${S3_BUCKET}/${FILENAME}"
 
+      - name: Update remote-config.json with new plugin version
+        run: |
+          aws s3 cp s3://${S3_BUCKET}/config.json /tmp/config.json 2>/dev/null || echo '{}' > /tmp/config.json
+          python3 - <<PYEOF
+          import json
+          try:
+              with open('/tmp/config.json') as f:
+                  cfg = json.load(f)
+          except Exception:
+              cfg = {}
+          cfg['plugin_version'] = '${{ env.VERSION }}'
+          cfg['plugin_sha256'] = '${{ env.PLUGIN_SHA256 }}'
+          cfg['plugin_tarball_url'] = 'https://get.trysidequest.ai/sidequest-plugin-${{ env.VERSION }}.tar.gz'
+          with open('/tmp/config.json', 'w') as f:
+              json.dump(cfg, f, indent=2)
+          print(json.dumps(cfg, indent=2))
+          PYEOF
+          aws s3 cp /tmp/config.json s3://${S3_BUCKET}/config.json \
+            --acl public-read --content-type application/json
+
       - name: Invalidate CloudFront
         run: |
           INVALIDATION_ID=$(aws cloudfront create-invalidation \
             --distribution-id "${{ env.DISTRIBUTION_ID }}" \
-            --paths "/sidequest-plugin-*.tar.gz" "/install.sh" "/setup.sh" \
+            --paths "/sidequest-plugin-*.tar.gz" "/config.json" "/install.sh" "/setup.sh" \
             --query 'Invalidation.Id' \
             --output text)
 
           echo "Invalidation ID: $INVALIDATION_ID"
 
-          # Poll for completion (timeout after 5 minutes)
           TIMEOUT=300
           ELAPSED=0
           while [ $ELAPSED -lt $TIMEOUT ]; do
@@ -108,5 +128,7 @@ jobs:
             shasum -a 256 sidequest-plugin-${{ env.VERSION }}.tar.gz
             # Should match: ${{ env.PLUGIN_SHA256 }}
             ```
+
+            **Reproducibility:** See [BUILD.md](../blob/main/BUILD.md) to verify this tarball was built from published source.
           draft: false
           prerelease: false

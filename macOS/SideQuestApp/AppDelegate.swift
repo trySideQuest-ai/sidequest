@@ -1,7 +1,6 @@
 import AppKit
 import ApplicationServices
 import ServiceManagement
-import Sparkle
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var apiClient: APIClient?
@@ -11,7 +10,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var sleepWorkspaceObserver: NSObjectProtocol?
     var eventQueue: EventQueue?
     private var eventSyncManager: EventSyncManager?
-    var updater: SPUUpdater?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Single-instance guard: if another SideQuestApp is already running, exit immediately
@@ -24,11 +22,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
-
-        // Initialize Sparkle updater early (before menus are displayed)
-        // SPUStandardUpdaterController handles UI + updates automatically
-        let updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
-        self.updater = updaterController.updater
 
         // Set app as accessory (menu bar only, no dock icon)
         NSApp.setActivationPolicy(.accessory)
