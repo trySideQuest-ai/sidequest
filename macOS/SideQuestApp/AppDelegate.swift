@@ -156,12 +156,12 @@ extension AppDelegate {
     func showTestQuest() {
         let testQuest = QuestData(
             quest_id: "test-123",
-            display_text: "Speed Up Your PostgreSQL Queries",
-            subtitle: "Index tips tailored to your schema — 3 min read",
+            display_text: "Speed up your Postgres queries",
+            subtitle: "Drop-in connection pooler — 10× faster reads, zero config.",
             tracking_url: "https://example.com",
             reward_amount: 250,
             brand_name: "Supabase",
-            category: "DevTool"
+            category: "DEVTOOL"
         )
         questPresenter?.push(testQuest)
     }

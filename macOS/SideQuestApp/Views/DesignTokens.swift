@@ -1,70 +1,74 @@
 import SwiftUI
 import AppKit
 
-// MARK: - Colors (Fantasy Parchment Palette)
+// MARK: - Design Tokens (Fantasy Parchment — authoritative design handoff)
+//
+// Mirrors design_handoff_sidequest_notification/Swift/DesignTokens.swift.
+// Single source of truth for color, metric, and font tokens.
 
 enum SQColor {
-    // Parchment background and rings
-    static let parchment       = Color(red: 0.945, green: 0.922, blue: 0.878) // #f1ebe0
-    static let parchmentDeep   = Color(red: 0.933, green: 0.898, blue: 0.839) // outer ring tone
-    static let parchmentEdge   = Color(red: 0.914, green: 0.874, blue: 0.800) // inner edge
+    // Ink (text)
+    static let ink          = Color(hex: 0x1A1420) // near-black
+    static let ink2         = Color(hex: 0x3A2F45) // subtitle
+    static let ink3         = Color(hex: 0x6B6275) // hint/label
 
-    // Gold (timer bar, pixel corners, borders)
-    static let gold            = Color(red: 0.769, green: 0.608, blue: 0.239) // #c49c3d
-    static let goldBright      = Color(red: 0.871, green: 0.702, blue: 0.310) // #de9f4f bar glow
-    static let goldDeep        = Color(red: 0.557, green: 0.412, blue: 0.153) // #8e6927 edge
-    static let goldShadow      = Color(red: 0.380, green: 0.267, blue: 0.094) // deep ink
+    // Parchment
+    static let fantasyPaper = Color(hex: 0xF1EBE0)
 
-    // Deep purple / ink
-    static let ink             = Color(red: 0.180, green: 0.102, blue: 0.255) // #2e1a41 body text
-    static let inkSoft         = Color(red: 0.298, green: 0.204, blue: 0.373) // #4c345f subtitle
-    static let inkMute         = Color(red: 0.451, green: 0.373, blue: 0.506) // #735f81 brand tag
-    static let inkPale         = Color(red: 0.604, green: 0.541, blue: 0.639) // #9a8aa3 keycap border
+    // Purple (inner ring, title, brand tag, dots)
+    static let purple400    = Color(hex: 0x8B5CC4)
+    static let purple600    = Color(hex: 0x5A2F96)
+    static let purple700    = Color(hex: 0x3E1B73)
+    static let purple800    = Color(hex: 0x2A0F52)
 
-    // Accents
-    static let categoryChip    = Color(red: 0.180, green: 0.102, blue: 0.255) // same as ink
-    static let categoryTxt     = Color(red: 0.957, green: 0.906, blue: 0.765) // cream on ink
-    static let keycapBg        = Color.white.opacity(0.55)
-    static let keycapFlash     = Color(red: 0.769, green: 0.608, blue: 0.239).opacity(0.4)
-    static let noiseDot        = Color(red: 0.298, green: 0.204, blue: 0.373).opacity(0.04)
-    static let separator       = Color(red: 0.298, green: 0.204, blue: 0.373).opacity(0.2)
+    // Gold (outer ring, pixel corners, timer bar, category tag, SIDE QUEST label)
+    static let gold300      = Color(hex: 0xF0D886)
+    static let gold400      = Color(hex: 0xE4C156)
+    static let gold500      = Color(hex: 0xC9A32E)
+    static let gold600      = Color(hex: 0x9E7D1A)
 
-    // Shadow tones
-    static let shadowSoft      = Color(red: 0.180, green: 0.102, blue: 0.255).opacity(0.18)
-    static let shadowHard      = Color(red: 0.180, green: 0.102, blue: 0.255).opacity(0.28)
+    // Keycap flash (accent pulse on hotkey fire)
+    static let keycapFlash  = Color(hex: 0xC9A32E).opacity(0.4)
 }
 
 // MARK: - Metrics
 
 enum SQMetric {
-    static let cardWidth:       CGFloat = 340
-    static let cardPadding:     CGFloat = 18
-    static let contentLead:     CGFloat = 20
-    static let outerCorner:     CGFloat = 10
-    static let innerCorner:     CGFloat = 6
-    static let ringOuter:       CGFloat = 2
-    static let ringInner:       CGFloat = 1
-    static let ringGap:         CGFloat = 4
-    static let pixelCorner:     CGFloat = 12
-    static let pixelUnit:       CGFloat = 3 // pixel block size inside the L-bracket
-    static let timerBarHeight:  CGFloat = 5
-    static let keycapWidth:     CGFloat = 22
-    static let keycapHeight:    CGFloat = 20
-    static let keycapRadius:    CGFloat = 3
+    static let cardWidth:       CGFloat = 336
+    static let cardRadius:      CGFloat = 12
+    static let ringInsetPurple: CGFloat = 3
+    static let pixelCornerSize: CGFloat = 10
+    static let pixelCornerPad:  CGFloat = 6
+
+    static let cardPadTop:      CGFloat = 11
+    static let cardPadRight:    CGFloat = 32
+    static let cardPadBottom:   CGFloat = 11
+    static let cardPadLeft:     CGFloat = 14
+    static let contentGutter:   CGFloat = 6
+
+    static let timerHeight:     CGFloat = 3
+    static let timerRightInset: CGFloat = 13
+    static let timerEdgeInset:  CGFloat = 5
+
+    static let tagHeight:       CGFloat = 20
+    static let keyCapSize:      CGFloat = 18
+    static let closeSize:       CGFloat = 20
+
+    // Stack + presenter tunables (preserved from prior implementation)
     static let defaultDuration: TimeInterval = 7.0
     static let stackGap:        CGFloat = 10
     static let stackMaxVisible: Int = 3
-    static let topInset:        CGFloat = 20 // spacing from top-right of active screen
+    static let topInset:        CGFloat = 20
     static let rightInset:      CGFloat = 20
 }
 
-// MARK: - Fonts (Bundled)
+// MARK: - Fonts (bundled TTFs registered via SQFontLoader)
 
 enum SQFontName {
-    static let interRegular    = "Inter-Regular"
-    static let interMedium     = "Inter-Medium"
-    static let interSemiBold   = "Inter-SemiBold"
-    static let pixel           = "PressStart2P-Regular"
+    static let interRegular  = "Inter-Regular"
+    static let interMedium   = "Inter-Medium"
+    static let interSemiBold = "Inter-SemiBold"
+    static let pixel         = "PressStart2P-Regular"
 }
 
 enum SQFont {
@@ -78,18 +82,16 @@ enum SQFont {
         default:
             name = SQFontName.interRegular
         }
-        if let _ = NSFont(name: name, size: size) {
+        if NSFont(name: name, size: size) != nil {
             return .custom(name, size: size)
         }
-        // Fallback: system font w/ matching weight
         return .system(size: size, weight: swiftUIWeight(from: weight))
     }
 
     static func pixel(_ size: CGFloat) -> Font {
-        if let _ = NSFont(name: SQFontName.pixel, size: size) {
+        if NSFont(name: SQFontName.pixel, size: size) != nil {
             return .custom(SQFontName.pixel, size: size)
         }
-        // Fallback: monospaced system font
         return .system(size: size, weight: .regular, design: .monospaced)
     }
 
@@ -108,12 +110,22 @@ enum SQFont {
     }
 }
 
-// MARK: - Font Loader
+// MARK: - Hex helper
 
-/// Registers bundled fonts with CoreText so `NSFont(name:size:)` can find them.
-/// `ATSApplicationFontsPath = Fonts/` in Info.plist auto-registers at launch,
-/// but we also do explicit CTFontManager registration as a belt-and-suspenders
-/// pass for dev builds where the plist key may not take effect.
+extension Color {
+    init(hex: UInt32, opacity: Double = 1) {
+        self.init(
+            .sRGB,
+            red:   Double((hex >> 16) & 0xFF) / 255.0,
+            green: Double((hex >>  8) & 0xFF) / 255.0,
+            blue:  Double( hex        & 0xFF) / 255.0,
+            opacity: opacity
+        )
+    }
+}
+
+// MARK: - Font Loader (registers bundled TTFs with CoreText)
+
 enum SQFontLoader {
     private static var didRun = false
 
@@ -132,18 +144,13 @@ enum SQFontLoader {
 
         for url in items where url.pathExtension.lowercased() == "ttf" {
             var errorRef: Unmanaged<CFError>?
-            let registered = CTFontManagerRegisterFontsForURL(
-                url as CFURL,
-                .process,
-                &errorRef
-            )
+            let registered = CTFontManagerRegisterFontsForURL(url as CFURL, .process, &errorRef)
             if !registered {
                 let desc = errorRef?.takeRetainedValue().localizedDescription ?? "unknown"
                 logFontLoadFailure("Register failed for \(url.lastPathComponent): \(desc)")
             }
         }
 
-        // Validate PostScript names
         let required = [
             SQFontName.interRegular,
             SQFontName.interMedium,
@@ -158,17 +165,17 @@ enum SQFontLoader {
     }
 
     private static func logFontLoadFailure(_ message: String) {
-        // Non-fatal per FONT-04 — card must still render with fallback
         ErrorHandler.logInfo("Font bundle: \(message)")
     }
 }
 
-// MARK: - Shadow Definition
+// MARK: - Card shadow
 
 struct SQShadow: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .shadow(color: SQColor.shadowSoft, radius: 8, x: 0, y: 4)
+            .shadow(color: Color(hex: 0x231438, opacity: 0.28), radius: 15, x: 0, y: 10)
+            .shadow(color: Color(hex: 0x231438, opacity: 0.22), radius: 30, x: 0, y: 24)
     }
 }
 
