@@ -26,6 +26,7 @@ The plugin provides the following commands within Claude Code (use `/sidequest:{
 - **`/sidequest:feedback`** — Report quest relevance to improve matching
 - **`/sidequest:retrigger`** — Request an immediate quest (useful for testing)
 - **`/sidequest:do-not-disturb`** — Toggle Do Not Disturb mode temporarily
+- **`/sidequest:reinstall`** — Reinstall SideQuest to the latest version
 
 ## How It Works
 
@@ -85,6 +86,16 @@ Key privacy principles:
 See `plugin/README.md` for plugin development and testing instructions.
 
 To build the macOS app, open `macOS/SideQuestApp.xcodeproj` in Xcode 15+ and build the target.
+
+## Reproducible Builds
+
+SideQuest publishes deterministic build instructions so auditors can verify the tarballs and DMGs on GitHub Releases match the published source.
+
+See [BUILD.md](BUILD.md) for step-by-step verification: clone at release tag, run the build scripts, compare the resulting SHA256 against the published release asset.
+
+## Operations
+
+See [OPS.md](OPS.md) for the rollback runbook and incident-response procedures.
 
 ## License
 

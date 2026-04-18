@@ -30,24 +30,18 @@ jobs:
       - name: Verify Xcode version
         run: xcodebuild -version
 
-      - name: Import code-signing certificate
-        uses: apple-actions/import-codesign-certs@v2
-        with:
-          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
-          p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
-          keychain-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
-
-      - name: Build app
+      - name: Build app (ad-hoc signing)
         run: |
           cd macOS
           xcodebuild -scheme SideQuestApp \
             -configuration Release \
             -derivedDataPath build/DerivedData \
-            CODE_SIGN_IDENTITY="Developer ID Application" \
-            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=YES \
             build
 
-          # Find the built app
           APP_PATH="build/DerivedData/Build/Products/Release/SideQuestApp.app"
           if [ ! -d "$APP_PATH" ]; then
             echo "Error: App not found at $APP_PATH"
@@ -61,26 +55,18 @@ jobs:
           APP_PATH="build/DerivedData/Build/Products/Release/SideQuestApp.app"
           bash scripts/create-dmg.sh "$APP_PATH" "SideQuestApp-${{ env.VERSION }}.dmg"
 
-          # Verify DMG exists
           if [ ! -f "SideQuestApp-${{ env.VERSION }}.dmg" ]; then
             echo "Error: DMG not created"
             exit 1
           fi
+          cp "SideQuestApp-${{ env.VERSION }}.dmg" "SideQuestApp-latest.dmg"
           echo "DMG created: SideQuestApp-${{ env.VERSION }}.dmg"
 
-      - name: Notarize DMG
-        run: |
-          cd macOS
-          bash scripts/notarize.sh "SideQuestApp-${{ env.VERSION }}.dmg" 30m
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-
-      - name: Move DMG to repo root for upload
+      - name: Move DMGs to repo root for upload
         run: |
           mv macOS/SideQuestApp-${{ env.VERSION }}.dmg .
-          ls -lh SideQuestApp-${{ env.VERSION }}.dmg
+          mv macOS/SideQuestApp-latest.dmg .
+          ls -lh SideQuestApp-*.dmg
 
       - name: Calculate SHA256
         run: |
@@ -94,24 +80,44 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-oidc-sidequest-releases
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Upload to S3
+      - name: Upload versioned DMG to S3
         run: |
           aws s3 cp SideQuestApp-${{ env.VERSION }}.dmg \
             s3://${S3_BUCKET}/SideQuestApp-${{ env.VERSION }}.dmg \
             --acl public-read
-          echo "Uploaded to s3://${S3_BUCKET}/SideQuestApp-${{ env.VERSION }}.dmg"
+          aws s3 cp SideQuestApp-latest.dmg \
+            s3://${S3_BUCKET}/SideQuestApp-latest.dmg \
+            --acl public-read
+          echo "Uploaded versioned + latest DMG"
+
+      - name: Update remote-config.json with new app version
+        run: |
+          aws s3 cp s3://${S3_BUCKET}/config.json /tmp/config.json 2>/dev/null || echo '{}' > /tmp/config.json
+          python3 - <<PYEOF
+          import json
+          try:
+              with open('/tmp/config.json') as f:
+                  cfg = json.load(f)
+          except Exception:
+              cfg = {}
+          cfg['app_version'] = '${{ env.VERSION }}'
+          cfg['app_sha256'] = '${{ env.APP_SHA256 }}'
+          cfg['app_dmg_url'] = 'https://get.trysidequest.ai/SideQuestApp-${{ env.VERSION }}.dmg'
+          with open('/tmp/config.json', 'w') as f:
+              json.dump(cfg, f, indent=2)
+          print(json.dumps(cfg, indent=2))
+          PYEOF
+          aws s3 cp /tmp/config.json s3://${S3_BUCKET}/config.json \
+            --acl public-read --content-type application/json
 
       - name: Invalidate CloudFront
         run: |
           INVALIDATION_ID=$(aws cloudfront create-invalidation \
             --distribution-id "${{ env.DISTRIBUTION_ID }}" \
-            --paths "/SideQuestApp-*.dmg" "/setup.sh" \
+            --paths "/SideQuestApp-*.dmg" "/config.json" "/setup.sh" "/install.sh" \
             --query 'Invalidation.Id' \
             --output text)
-
           echo "Invalidation ID: $INVALIDATION_ID"
-
-          # Poll for completion (timeout after 5 minutes)
           TIMEOUT=300
           ELAPSED=0
           while [ $ELAPSED -lt $TIMEOUT ]; do
@@ -120,17 +126,14 @@ jobs:
               --id "$INVALIDATION_ID" \
               --query 'Invalidation.Status' \
               --output text)
-
             if [ "$STATUS" = "Completed" ]; then
-              echo "CloudFront invalidation completed successfully"
+              echo "CloudFront invalidation completed"
               exit 0
             fi
-
             echo "Invalidation status: $STATUS (waiting...)"
             sleep 10
             ELAPSED=$((ELAPSED + 10))
           done
-
           echo "CloudFront invalidation polling timeout"
           exit 1
 
@@ -155,14 +158,15 @@ jobs:
             # Should match: ${{ env.APP_SHA256 }}
             ```
 
-            **Notarization:** Submitted to Apple Notary Service and approved. This app is safe to run on macOS with Gatekeeper enabled.
-
             **Installation:**
-            1. Download the DMG
-            2. Mount it: `hdiutil attach SideQuestApp-${{ env.VERSION }}.dmg`
-            3. Drag SideQuestApp to /Applications
-            4. Eject the DMG
-            5. Launch from Applications folder
+            ```bash
+            curl -fsSL https://get.trysidequest.ai/install.sh | bash
+            ```
+
+            Or in Claude Code:
+            ```
+            /sidequest:reinstall
+            ```
           draft: false
           prerelease: false
           files: |

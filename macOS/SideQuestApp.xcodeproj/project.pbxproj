@@ -19,7 +19,6 @@
 		A10012 /* MenuContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10012 /* MenuContentView.swift */; };
 		A10013 /* NotificationWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10013 /* NotificationWindowView.swift */; };
 		A10014 /* QuestCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10014 /* QuestCardView.swift */; };
-		A10015 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = P10001 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,16 +39,8 @@
 		B10100 /* SideQuestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SideQuestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		P10000 /* XCRemoteSwiftPackageReference "Sparkle" */ = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/sparkle-project/Sparkle"; requirement = {kind = upToNextMajorVersion; minimumVersion = 2.0.0; }; };
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		P10001 /* Sparkle */ = {isa = XCSwiftPackageProductDependency; package = P10000 /* XCRemoteSwiftPackageReference "Sparkle" */; productName = Sparkle; };
-/* End XCSwiftPackageProductDependency section */
-
 /* Begin PBXFrameworksBuildPhase section */
-		C10001 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (A10015 /* Sparkle in Frameworks */); runOnlyForDeploymentPostprocessing = 0; };
+		C10001 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -62,11 +53,11 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		E10001 /* SideQuestApp */ = {isa = PBXNativeTarget; buildConfigurationList = F10002 /* Build configuration list for PBXNativeTarget "SideQuestApp" */; buildPhases = (G10001 /* Sources */, C10001 /* Frameworks */); buildRules = (); dependencies = (); name = SideQuestApp; packageProductDependencies = (P10001 /* Sparkle */); productName = SideQuestApp; productReference = B10100 /* SideQuestApp.app */; productType = "com.apple.product-type.application"; };
+		E10001 /* SideQuestApp */ = {isa = PBXNativeTarget; buildConfigurationList = F10002 /* Build configuration list for PBXNativeTarget "SideQuestApp" */; buildPhases = (G10001 /* Sources */, C10001 /* Frameworks */); buildRules = (); dependencies = (); name = SideQuestApp; packageProductDependencies = (); productName = SideQuestApp; productReference = B10100 /* SideQuestApp.app */; productType = "com.apple.product-type.application"; };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		H10001 /* Project object */ = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600;}; buildConfigurationList = F10001 /* Build configuration list for PBXProject "SideQuestApp" */; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = D10001; packageReferences = (P10000 /* XCRemoteSwiftPackageReference "Sparkle" */); productRefGroup = D10005 /* Products */; projectDirPath = ""; projectRoot = ""; targets = (E10001 /* SideQuestApp */); };
+		H10001 /* Project object */ = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600;}; buildConfigurationList = F10001 /* Build configuration list for PBXProject "SideQuestApp" */; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = D10001; packageReferences = (); productRefGroup = D10005 /* Products */; projectDirPath = ""; projectRoot = ""; targets = (E10001 /* SideQuestApp */); };
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */

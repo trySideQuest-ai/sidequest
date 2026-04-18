@@ -290,10 +290,55 @@ if [ -f "$CONFIG_FILE" ]; then
       FIRST_RUN_GUIDANCE="Run /sidequest:status to see pipeline health and schedule your first quest."
     fi
 
+    # App-update nudge: compare installed app version to remote-config.app_version
+    APP_UPDATE_NUDGE=""
+    APP_UPDATE_NUDGE=$(python3 - "$REMOTE_CONFIG_CACHE" <<'PYEOF' 2>/dev/null || true
+import json, os, plistlib, subprocess, sys
+
+cache_path = sys.argv[1]
+if not os.path.isfile(cache_path):
+    sys.exit(0)
+
+try:
+    with open(cache_path) as f:
+        rc = json.load(f)
+except Exception:
+    sys.exit(0)
+
+latest = rc.get('app_version')
+if not latest:
+    sys.exit(0)
+
+# Locate installed app bundle in common paths
+candidates = [
+    os.path.expanduser('~/Applications/SideQuestApp.app/Contents/Info.plist'),
+    '/Applications/SideQuestApp.app/Contents/Info.plist',
+]
+installed = None
+for path in candidates:
+    if os.path.isfile(path):
+        try:
+            with open(path, 'rb') as f:
+                info = plistlib.load(f)
+            installed = info.get('CFBundleShortVersionString')
+            break
+        except Exception:
+            continue
+
+if not installed:
+    sys.exit(0)
+
+if installed != latest:
+    print(f"**App update available:** v{installed} installed, v{latest} available. Run /sidequest:reinstall to upgrade.")
+PYEOF
+)
+
     cat <<CONTEXT | json_output
 SideQuest is enabled and authenticated.
 
 **DND Guidance:** If you feel overwhelmed by quests, don't disable the plugin. Instead, use /sidequest:do-not-disturb to temporarily pause quests. You control the schedule.
+
+$APP_UPDATE_NUDGE
 
 $FIRST_RUN_GUIDANCE
 CONTEXT
