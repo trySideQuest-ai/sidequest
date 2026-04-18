@@ -15,10 +15,15 @@
 		A10007 /* EventSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10007 /* EventSyncManager.swift */; };
 		A10008 /* IPCListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10008 /* IPCListener.swift */; };
 		A10010 /* StateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10010 /* StateManager.swift */; };
-		A10011 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10011 /* WindowManager.swift */; };
 		A10012 /* MenuContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10012 /* MenuContentView.swift */; };
-		A10013 /* NotificationWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10013 /* NotificationWindowView.swift */; };
-		A10014 /* QuestCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10014 /* QuestCardView.swift */; };
+		A10020 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10020 /* DesignTokens.swift */; };
+		A10021 /* SideQuestCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10021 /* SideQuestCard.swift */; };
+		A10022 /* QuestStackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10022 /* QuestStackView.swift */; };
+		A10023 /* Quest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10023 /* Quest.swift */; };
+		A10024 /* QuestPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10024 /* QuestPanel.swift */; };
+		A10025 /* QuestPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10025 /* QuestPresenter.swift */; };
+		A10026 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10026 /* HotkeyManager.swift */; };
+		A10030 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = B10030 /* Fonts */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,11 +36,16 @@
 		B10007 /* EventSyncManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EventSyncManager.swift; sourceTree = "<group>"; };
 		B10008 /* IPCListener.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = IPCListener.swift; sourceTree = "<group>"; };
 		B10010 /* StateManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StateManager.swift; sourceTree = "<group>"; };
-		B10011 /* WindowManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
 		B10012 /* MenuContentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MenuContentView.swift; sourceTree = "<group>"; };
-		B10013 /* NotificationWindowView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NotificationWindowView.swift; sourceTree = "<group>"; };
-		B10014 /* QuestCardView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = QuestCardView.swift; sourceTree = "<group>"; };
 		B10015 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B10020 /* DesignTokens.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
+		B10021 /* SideQuestCard.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SideQuestCard.swift; sourceTree = "<group>"; };
+		B10022 /* QuestStackView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = QuestStackView.swift; sourceTree = "<group>"; };
+		B10023 /* Quest.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Quest.swift; sourceTree = "<group>"; };
+		B10024 /* QuestPanel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = QuestPanel.swift; sourceTree = "<group>"; };
+		B10025 /* QuestPresenter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = QuestPresenter.swift; sourceTree = "<group>"; };
+		B10026 /* HotkeyManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
+		B10030 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Fonts; path = Resources/Fonts; sourceTree = "<group>"; };
 		B10100 /* SideQuestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SideQuestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -45,23 +55,28 @@
 
 /* Begin PBXGroup section */
 		D10001 /* = */ = {isa = PBXGroup; children = (D10002 /* SideQuestApp */, D10005 /* Products */); sourceTree = "<group>"; };
-		D10002 /* SideQuestApp */ = {isa = PBXGroup; children = (B10001 /* App.swift */, B10002 /* AppDelegate.swift */, B10015 /* Info.plist */, D10003 /* Models */, D10004 /* Services */, D10006 /* Views */); path = SideQuestApp; sourceTree = "<group>"; };
-		D10003 /* Models */ = {isa = PBXGroup; children = (B10003 /* QuestData.swift */); name = Models; path = Models; sourceTree = "<group>"; };
-		D10004 /* Services */ = {isa = PBXGroup; children = (B10004 /* APIClient.swift */, B10005 /* ErrorHandler.swift */, B10006 /* EventQueue.swift */, B10007 /* EventSyncManager.swift */, B10008 /* IPCListener.swift */, B10010 /* StateManager.swift */, B10011 /* WindowManager.swift */); name = Services; path = Services; sourceTree = "<group>"; };
+		D10002 /* SideQuestApp */ = {isa = PBXGroup; children = (B10001 /* App.swift */, B10002 /* AppDelegate.swift */, B10015 /* Info.plist */, D10003 /* Models */, D10004 /* Services */, D10006 /* Views */, D10007 /* Resources */); path = SideQuestApp; sourceTree = "<group>"; };
+		D10003 /* Models */ = {isa = PBXGroup; children = (B10003 /* QuestData.swift */, B10023 /* Quest.swift */); name = Models; path = Models; sourceTree = "<group>"; };
+		D10004 /* Services */ = {isa = PBXGroup; children = (B10004 /* APIClient.swift */, B10005 /* ErrorHandler.swift */, B10006 /* EventQueue.swift */, B10007 /* EventSyncManager.swift */, B10008 /* IPCListener.swift */, B10010 /* StateManager.swift */, B10024 /* QuestPanel.swift */, B10025 /* QuestPresenter.swift */, B10026 /* HotkeyManager.swift */); name = Services; path = Services; sourceTree = "<group>"; };
 		D10005 /* Products */ = {isa = PBXGroup; children = (B10100 /* SideQuestApp.app */); name = Products; sourceTree = "<group>"; };
-		D10006 /* Views */ = {isa = PBXGroup; children = (B10012 /* MenuContentView.swift */, B10013 /* NotificationWindowView.swift */, B10014 /* QuestCardView.swift */); name = Views; path = Views; sourceTree = "<group>"; };
+		D10006 /* Views */ = {isa = PBXGroup; children = (B10012 /* MenuContentView.swift */, B10020 /* DesignTokens.swift */, B10021 /* SideQuestCard.swift */, B10022 /* QuestStackView.swift */); name = Views; path = Views; sourceTree = "<group>"; };
+		D10007 /* Resources */ = {isa = PBXGroup; children = (B10030 /* Fonts */); name = Resources; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		E10001 /* SideQuestApp */ = {isa = PBXNativeTarget; buildConfigurationList = F10002 /* Build configuration list for PBXNativeTarget "SideQuestApp" */; buildPhases = (G10001 /* Sources */, C10001 /* Frameworks */); buildRules = (); dependencies = (); name = SideQuestApp; packageProductDependencies = (); productName = SideQuestApp; productReference = B10100 /* SideQuestApp.app */; productType = "com.apple.product-type.application"; };
+		E10001 /* SideQuestApp */ = {isa = PBXNativeTarget; buildConfigurationList = F10002 /* Build configuration list for PBXNativeTarget "SideQuestApp" */; buildPhases = (G10001 /* Sources */, C10001 /* Frameworks */, C10002 /* Resources */); buildRules = (); dependencies = (); name = SideQuestApp; packageProductDependencies = (); productName = SideQuestApp; productReference = B10100 /* SideQuestApp.app */; productType = "com.apple.product-type.application"; };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
 		H10001 /* Project object */ = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600;}; buildConfigurationList = F10001 /* Build configuration list for PBXProject "SideQuestApp" */; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = D10001; packageReferences = (); productRefGroup = D10005 /* Products */; projectDirPath = ""; projectRoot = ""; targets = (E10001 /* SideQuestApp */); };
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		C10002 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10030 /* Fonts in Resources */); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
-		G10001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10001, A10002, A10003, A10004, A10005, A10006, A10007, A10008, A10010, A10011, A10012, A10013, A10014); runOnlyForDeploymentPostprocessing = 0; };
+		G10001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10001, A10002, A10003, A10004, A10005, A10006, A10007, A10008, A10010, A10012, A10020, A10021, A10022, A10023, A10024, A10025, A10026); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
