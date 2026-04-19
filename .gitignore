@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Xcode
+## User-specific Xcode state
+**/xcuserdata/
+*.xcuserstate
+
+## Swift Package Manager resolved state (regenerated on open)
+**/xcshareddata/swiftpm/
+
+## Build output
+DerivedData/
+build/
+*.dSYM.zip
+*.dSYM
+
+## Swift
+.build/
+Packages/
+Package.pins
+Package.resolved
