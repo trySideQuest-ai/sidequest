@@ -246,19 +246,7 @@ CONTEXT_RESULT=$(python3 "${SCRIPT_DIR_CTX}/extract-context.py" --mode full "$HI
 # SAFE-04: Unset diff content immediately — never persists beyond this script
 unset SIDEQUEST_DIFF SIDEQUEST_BRANCH SIDEQUEST_COMMIT_MSG
 
-# Flatten weighted tags to sorted slug array (highest-weight first)
-# Weights are used locally for prioritization — server gets flat tags like before
-CONTEXT_TAGS=$(python3 -c "
-import json, sys
-try:
-    result = json.loads(sys.argv[1])
-    tags = [t['tag'] for t in result.get('weighted_tags', [])]
-    print(json.dumps(tags))
-except:
-    print('[]')
-" "$CONTEXT_RESULT" 2>/dev/null) || CONTEXT_TAGS="[]"
-
-# Extract domain for analytics logging
+# Extract domain for analytics logging (used for payload too)
 CONTEXT_DOMAIN=$(python3 -c "
 import json, sys
 try:
@@ -268,18 +256,6 @@ try:
 except:
     print('')
 " "$CONTEXT_RESULT" 2>/dev/null) || CONTEXT_DOMAIN=""
-
-# Inject domain as a context tag for matching (quests have domain tags at low weight)
-if [ -n "$CONTEXT_DOMAIN" ]; then
-  CONTEXT_TAGS=$(python3 -c "
-import json, sys
-tags = json.loads(sys.argv[1])
-domain_tag = 'domain_' + sys.argv[2]
-if domain_tag not in tags:
-    tags.append(domain_tag)
-print(json.dumps(tags))
-" "$CONTEXT_TAGS" "$CONTEXT_DOMAIN" 2>/dev/null) || true
-fi
 
 # ============================================================================
 # PHASE 6: Test IPC socket connection
@@ -296,15 +272,37 @@ fi
 # PHASE 7: Fetch quest from API
 # ============================================================================
 
-# Build request body — flat tags sorted by weight + optional domain for analytics
+# Build request body:
+#   { tags: [{slug, weight, source, age_min}], intent_enum, freshness,
+#     context_summary: null, domain }
 REQUEST_BODY=$(python3 -c "
 import json, sys
-body = {'context_tags': json.loads(sys.argv[1])}
+try:
+    result = json.loads(sys.argv[1])
+except Exception:
+    result = {}
+tags = result.get('weighted_tags', []) or []
+# Server expects slug key; extract-context emits both tag and slug for compat.
+serialized_tags = [
+    {
+        'slug': t.get('slug') or t.get('tag'),
+        'weight': t.get('weight', 0),
+        'source': t.get('source', ''),
+        'age_min': t.get('age_min', 0),
+    }
+    for t in tags if (t.get('slug') or t.get('tag'))
+]
+body = {
+    'tags': serialized_tags,
+    'intent_enum': result.get('intent_enum') or 'writing_feature',
+    'freshness': result.get('freshness', 0.0),
+    'context_summary': None,
+}
 domain = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else None
 if domain:
     body['domain'] = domain
 print(json.dumps(body))
-" "$CONTEXT_TAGS" "$CONTEXT_DOMAIN" 2>/dev/null) || REQUEST_BODY="{\"context_tags\":[]}"
+" "$CONTEXT_RESULT" "$CONTEXT_DOMAIN" 2>/dev/null) || REQUEST_BODY='{"tags":[],"intent_enum":"writing_feature","freshness":0,"context_summary":null}'
 
 RESPONSE=$(curl -s --max-time 5 \
   -H "Authorization: Bearer $TOKEN" \

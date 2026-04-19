@@ -287,6 +287,16 @@ def classify_intent(intents_config, transcript_text='', diff_text='', branch='',
     return intents_config.get('default', 'writing_feature')
 
 
+FRESHNESS_SIGNAL_COUNT_TARGET = 4
+
+
+def compute_freshness(signal_count, target=FRESHNESS_SIGNAL_COUNT_TARGET):
+    """Freshness ∈ [0, 1] — session-window signal count, not wall-clock window."""
+    if target <= 0:
+        return 0.0
+    return min(1.0, signal_count / float(target))
+
+
 def extract(sources, patterns_config, sources_config, domains_config):
     """
     Core extraction pipeline:
@@ -294,7 +304,8 @@ def extract(sources, patterns_config, sources_config, domains_config):
     2. Per matched tag: candidate weight = base_weight × exp(-age_min / half_life).
     3. Keep max candidate per tag across sources/segments.
     4. Derive domain from the kept tag set.
-    5. Return sorted weighted tags + domain.
+    5. Compute freshness from count of sources that produced ≥1 tag.
+    6. Return sorted weighted tags + domain + freshness.
     """
     matcher = PatternMatcher(patterns_config)
     weights = sources_config['weights']
@@ -302,16 +313,20 @@ def extract(sources, patterns_config, sources_config, domains_config):
     half_life = float(sources_config.get('recency_decay_half_life_min', 10))
 
     tag_weights = {}
+    signal_sources = set()
 
     for source_name, segments in sources:
         if not segments:
             continue
         source_weight = weights.get(source_name, 0.4)
+        source_contributed = False
         for text, age_min in segments:
             if not text:
                 continue
             decayed = source_weight * math.exp(-age_min / half_life) if half_life > 0 else source_weight
             matched_tags = matcher.match(text)
+            if matched_tags:
+                source_contributed = True
             for tag in matched_tags:
                 prev = tag_weights.get(tag)
                 if prev is None or prev['weight'] < decayed:
@@ -320,11 +335,14 @@ def extract(sources, patterns_config, sources_config, domains_config):
                         'source': source_name,
                         'age_min': round(age_min, 3),
                     }
+        if source_contributed:
+            signal_sources.add(source_name)
 
     sorted_tags = sorted(tag_weights.items(), key=lambda x: -x[1]['weight'])[:max_tags]
 
     tag_set = set(t[0] for t in sorted_tags)
     domain = classify_domain(tag_set, domains_config)
+    freshness = compute_freshness(len(signal_sources))
 
     return {
         'weighted_tags': [
@@ -338,6 +356,8 @@ def extract(sources, patterns_config, sources_config, domains_config):
             for tag, v in sorted_tags
         ],
         'domain': domain,
+        'freshness': round(freshness, 3),
+        'signal_source_count': len(signal_sources),
     }
 
 
