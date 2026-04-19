@@ -3,11 +3,12 @@
     "conversation": 1.0,
     "diff": 0.7,
     "git_metadata": 0.4,
-    "config": 0.4
+    "config": 0.15
   },
   "limits": {
     "max_diff_bytes": 51200,
     "max_conversation_entries": 100,
     "max_output_tags": 20
-  }
+  },
+  "recency_decay_half_life_min": 10
 }
