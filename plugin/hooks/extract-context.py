@@ -154,6 +154,139 @@ def read_config_cache_segment(config_cache_path=None):
         return []
 
 
+_FENCED_CODE_RE = re.compile(r'```.*?```', re.DOTALL)
+
+
+def _strip_fenced_code(text):
+    if not text:
+        return ''
+    return _FENCED_CODE_RE.sub(' ', text)
+
+
+def _project_sessions_dir(cwd):
+    """Map cwd '/Users/tomer/proj' → '~/.claude/projects/-Users-tomer-proj'."""
+    normalized = os.path.abspath(cwd).replace('/', '-')
+    return os.path.expanduser(os.path.join('~/.claude/projects', normalized))
+
+
+def read_session_transcript_segments(
+    cwd=None, turns_min=5, turns_max=10, stale_max_min=30, now_ms=None,
+):
+    """Return recent user+assistant turn pairs from the latest Claude Code JSONL.
+
+    Path: ~/.claude/projects/<cwd-slashes-as-dashes>/*.jsonl (flat, no 'sessions/' subdir).
+    Most-recent file by mtime; skipped if older than stale_max_min.
+    Strips fenced code blocks from assistant text. Returns list of (text, age_min) segments.
+    Empty list on any error or if no session exists.
+    """
+    if now_ms is None:
+        now_ms = int(time.time() * 1000)
+    cwd = cwd or os.getcwd()
+    projects_dir = _project_sessions_dir(cwd)
+    if not os.path.isdir(projects_dir):
+        return []
+
+    try:
+        entries = [
+            os.path.join(projects_dir, f)
+            for f in os.listdir(projects_dir)
+            if f.endswith('.jsonl')
+        ]
+    except OSError:
+        return []
+
+    if not entries:
+        return []
+
+    entries.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+    latest = entries[0]
+
+    session_age_min = (now_ms / 1000.0 - os.path.getmtime(latest)) / 60.0
+    if session_age_min > stale_max_min:
+        return []
+
+    turns = []
+    try:
+        with open(latest) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                kind = obj.get('type')
+                role = None
+                text = ''
+                ts_str = obj.get('timestamp')
+                if kind == 'user':
+                    msg = obj.get('message', {}) or {}
+                    content = msg.get('content')
+                    if isinstance(content, str):
+                        text = content
+                    elif isinstance(content, list):
+                        text = ' '.join(
+                            part.get('text', '') for part in content
+                            if isinstance(part, dict) and part.get('type') == 'text'
+                        )
+                    role = 'user'
+                elif kind == 'assistant':
+                    msg = obj.get('message', {}) or {}
+                    content = msg.get('content')
+                    if isinstance(content, list):
+                        text = ' '.join(
+                            part.get('text', '') for part in content
+                            if isinstance(part, dict) and part.get('type') == 'text'
+                        )
+                    role = 'assistant'
+                if not role or not text:
+                    continue
+                if role == 'assistant':
+                    text = _strip_fenced_code(text)
+                turn_age_min = 0
+                if ts_str:
+                    try:
+                        from datetime import datetime
+                        turn_ts_ms = int(
+                            datetime.fromisoformat(ts_str.replace('Z', '+00:00')).timestamp() * 1000
+                        )
+                        turn_age_min = _age_min_from_timestamp_ms(turn_ts_ms, now_ms)
+                    except Exception:
+                        turn_age_min = 0
+                turns.append((role, text, turn_age_min))
+    except (IOError, PermissionError):
+        return []
+
+    # Keep the last turns_max turns; clamp to at least turns_min recency-wise
+    keep = turns[-turns_max:]
+    if len(keep) < turns_min:
+        # Not enough turns — still return what we have
+        pass
+    return [(text, age_min) for _role, text, age_min in keep]
+
+
+def classify_intent(intents_config, transcript_text='', diff_text='', branch='', commit_msg=''):
+    """Priority-ordered rule-based classifier → one of 12 intent_enum values."""
+    haystack = ' '.join([transcript_text, diff_text]).lower()
+    branch_lc = (branch or '').lower()
+    commit_lc = (commit_msg or '').lower()
+
+    for rule in intents_config.get('rules', []):
+        intent = rule['intent']
+        prefixes_commit = [p.lower() for p in rule.get('commit_msg_prefixes', [])]
+        if prefixes_commit and any(commit_lc.startswith(p) for p in prefixes_commit):
+            return intent
+        prefixes_branch = [p.lower() for p in rule.get('branch_prefixes', [])]
+        if prefixes_branch and any(branch_lc.startswith(p) for p in prefixes_branch):
+            return intent
+        keywords = [kw.lower() for kw in rule.get('keywords', [])]
+        if keywords and any(kw in haystack for kw in keywords):
+            return intent
+
+    return intents_config.get('default', 'writing_feature')
+
+
 def extract(sources, patterns_config, sources_config, domains_config):
     """
     Core extraction pipeline:
@@ -240,8 +373,16 @@ def main():
         history_path = args[0] if args else os.path.expanduser('~/.claude/history.jsonl')
         project_filter = args[1] if len(args) > 1 else None
 
+        try:
+            intents_config = load_config('intents.json')
+        except (IOError, json.JSONDecodeError):
+            intents_config = {'default': 'writing_feature', 'rules': []}
+
         conversation_segments = read_conversation_segments(
             history_path, project_filter, limits.get('max_conversation_entries', 100)
+        )
+        transcript_segments = read_session_transcript_segments(
+            cwd=project_filter or os.getcwd()
         )
         diff_segments = read_diff_segment(
             os.environ.get('SIDEQUEST_DIFF', ''),
@@ -256,17 +397,29 @@ def main():
         )
 
         sources = [
-            ('conversation', conversation_segments),
+            ('conversation', conversation_segments + transcript_segments),
             ('diff', diff_segments),
             ('git_metadata', git_metadata_segments),
             ('config', config_cache_segments),
         ]
 
+        transcript_text = ' '.join(text for text, _ in transcript_segments)
+        diff_text = os.environ.get('SIDEQUEST_DIFF', '') or ''
+        intent_enum = classify_intent(
+            intents_config,
+            transcript_text=transcript_text,
+            diff_text=diff_text,
+            branch=os.environ.get('SIDEQUEST_BRANCH', ''),
+            commit_msg=os.environ.get('SIDEQUEST_COMMIT_MSG', ''),
+        )
+
         result = extract(sources, patterns_config, sources_config, domains_config)
+        result['intent_enum'] = intent_enum
+        result['transcript_segment_count'] = len(transcript_segments)
         print(json.dumps(result))
         return
 
-    print(json.dumps({'weighted_tags': [], 'domain': None}))
+    print(json.dumps({'weighted_tags': [], 'domain': None, 'intent_enum': 'writing_feature'}))
 
 
 if __name__ == '__main__':

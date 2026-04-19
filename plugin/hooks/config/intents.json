@@ -1,0 +1,119 @@
+{
+  "default": "writing_feature",
+  "rules": [
+    {
+      "intent": "fixing_bug",
+      "commit_msg_prefixes": ["fix:", "fix(", "bug:", "bug(", "hotfix:"]
+    },
+    {
+      "intent": "debugging",
+      "keywords": [
+        "traceback",
+        "stack trace",
+        "stacktrace",
+        "failing test",
+        "tests are failing",
+        "reproduce the bug",
+        "why does this fail",
+        "stepping through",
+        "breakpoint",
+        "pdb",
+        "debugger"
+      ]
+    },
+    {
+      "intent": "writing_tests",
+      "keywords": [
+        "add a test",
+        "add tests",
+        "write tests",
+        "writing tests",
+        "unit test",
+        "integration test",
+        "test case",
+        "pytest",
+        "jest",
+        "rspec"
+      ]
+    },
+    {
+      "intent": "refactoring",
+      "commit_msg_prefixes": ["refactor:", "refactor("],
+      "keywords": [
+        "refactor",
+        "rename this",
+        "extract function",
+        "extract method",
+        "clean up"
+      ]
+    },
+    {
+      "intent": "code_review",
+      "keywords": [
+        "code review",
+        "pull request",
+        "review this pr",
+        "review comments"
+      ]
+    },
+    {
+      "intent": "planning",
+      "keywords": [
+        "roadmap",
+        "design doc",
+        "rfc",
+        "let's plan",
+        "brainstorm",
+        "architecture"
+      ]
+    },
+    {
+      "intent": "integration_deploy",
+      "commit_msg_prefixes": ["chore(ci):", "ci:", "deploy:"],
+      "keywords": [
+        "deploy",
+        "deployment",
+        "ci/cd",
+        "pipeline",
+        "github actions",
+        "lambda",
+        "terraform apply"
+      ]
+    },
+    {
+      "intent": "documentation",
+      "commit_msg_prefixes": ["docs:", "doc:"],
+      "keywords": [
+        "readme",
+        "documentation",
+        "docstring",
+        "tutorial",
+        "user guide"
+      ]
+    },
+    {
+      "intent": "perf_profiling",
+      "commit_msg_prefixes": ["perf:"],
+      "keywords": [
+        "benchmark",
+        "profile",
+        "profiler",
+        "bottleneck",
+        "slow query",
+        "optimize performance"
+      ]
+    },
+    {
+      "intent": "setup_scaffolding",
+      "branch_prefixes": ["setup-", "init-", "scaffold-", "bootstrap-"],
+      "keywords": [
+        "scaffold",
+        "boilerplate",
+        "create-next-app",
+        "npm init",
+        "cargo init",
+        "new project"
+      ]
+    }
+  ]
+}
