@@ -55,14 +55,6 @@ def load_all_configs():
   }
 
 
-def safe_load_intents_config():
-  """Load intents config with fallback to defaults."""
-  try:
-    return load_config('intents.json')
-  except (IOError, json.JSONDecodeError):
-    return {'default': 'writing_feature', 'rules': []}
-
-
 class PatternMatcher:
   """Compiles tag patterns from config and matches text against them."""
 
@@ -322,25 +314,6 @@ def classify_domain(tag_set, domains_config):
   return best_domain
 
 
-def classify_intent(intents_config, transcript_text='', diff_text='', branch='', commit_msg=''):
-  """Priority-ordered rule-based classifier → one of 12 intent_enum values."""
-  haystack = ' '.join([transcript_text, diff_text]).lower()
-  branch_lc = (branch or '').lower()
-  commit_lc = (commit_msg or '').lower()
-  for rule in intents_config.get('rules', []):
-    intent = rule['intent']
-    prefixes_commit = [p.lower() for p in rule.get('commit_msg_prefixes', [])]
-    if prefixes_commit and any(commit_lc.startswith(p) for p in prefixes_commit):
-      return intent
-    prefixes_branch = [p.lower() for p in rule.get('branch_prefixes', [])]
-    if prefixes_branch and any(branch_lc.startswith(p) for p in prefixes_branch):
-      return intent
-    keywords = [kw.lower() for kw in rule.get('keywords', [])]
-    if keywords and any(kw in haystack for kw in keywords):
-      return intent
-  return intents_config.get('default', 'writing_feature')
-
-
 def compute_freshness(signal_count, target=FRESHNESS_SIGNAL_COUNT_TARGET):
   """Freshness ∈ [0, 1] — session-window signal count, not wall-clock window."""
   if target <= 0:
@@ -475,37 +448,14 @@ def _collect_all_sources(history_path, project_filter, limits):
   ]
 
 
-def _read_env_git_metadata():
-  """Extract branch and commit msg from env vars."""
-  branch = os.environ.get('SIDEQUEST_BRANCH', '')
-  commit_msg = os.environ.get('SIDEQUEST_COMMIT_MSG', '')
-  return branch, commit_msg
-
-
-def _join_transcript_text(transcript_segments):
-  """Concatenate transcript segments into single text."""
-  return ' '.join(text for text, _ in transcript_segments)
-
-
 def run_full_mode(args, configs):
-  """Full mode: extract tags from all sources + compute domain + intent."""
+  """Full mode: extract tags from all sources + compute domain."""
   history_path = args[0] if args else os.path.expanduser('~/.claude/history.jsonl')
   project_filter = args[1] if len(args) > 1 else None
   limits = configs['sources']['limits']
-  intents_config = safe_load_intents_config()
   sources = _collect_all_sources(history_path, project_filter, limits)
   transcript_segments = sources[0][1]  # ('conversation', ...)
-  diff_text = os.environ.get('SIDEQUEST_DIFF', '') or ''
-  branch, commit_msg = _read_env_git_metadata()
-  intent_enum = classify_intent(
-    intents_config,
-    transcript_text=_join_transcript_text(transcript_segments),
-    diff_text=diff_text,
-    branch=branch,
-    commit_msg=commit_msg,
-  )
   result = extract(sources, configs['patterns'], configs['sources'], configs['domains'])
-  result['intent_enum'] = intent_enum
   result['transcript_segment_count'] = len(transcript_segments)
   print(json.dumps(result))
 
@@ -519,7 +469,7 @@ def main():
   elif mode == 'full':
     run_full_mode(args, configs)
   else:
-    print(json.dumps({'weighted_tags': [], 'domain': None, 'intent_enum': 'writing_feature'}))
+    print(json.dumps({'weighted_tags': [], 'domain': None}))
 
 
 if __name__ == '__main__':

@@ -246,17 +246,6 @@ CONTEXT_RESULT=$(python3 "${SCRIPT_DIR_CTX}/extract-context.py" --mode full "$HI
 # SAFE-04: Unset diff content immediately — never persists beyond this script
 unset SIDEQUEST_DIFF SIDEQUEST_BRANCH SIDEQUEST_COMMIT_MSG
 
-# Extract domain for analytics logging (used for payload too)
-CONTEXT_DOMAIN=$(python3 -c "
-import json, sys
-try:
-    result = json.loads(sys.argv[1])
-    domain = result.get('domain')
-    print(domain if domain else '')
-except:
-    print('')
-" "$CONTEXT_RESULT" 2>/dev/null) || CONTEXT_DOMAIN=""
-
 # ============================================================================
 # PHASE 6: Test IPC socket connection
 # ============================================================================
@@ -273,8 +262,7 @@ fi
 # ============================================================================
 
 # Build request body:
-#   { tags: [{slug, weight, source, age_min}], intent_enum, freshness,
-#     context_summary: null, domain }
+#   { tags: [{slug, weight, source, age_min}], freshness }
 REQUEST_BODY=$(python3 -c "
 import json, sys
 try:
@@ -294,15 +282,10 @@ serialized_tags = [
 ]
 body = {
     'tags': serialized_tags,
-    'intent_enum': result.get('intent_enum') or 'writing_feature',
     'freshness': result.get('freshness', 0.0),
-    'context_summary': None,
 }
-domain = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else None
-if domain:
-    body['domain'] = domain
 print(json.dumps(body))
-" "$CONTEXT_RESULT" "$CONTEXT_DOMAIN" 2>/dev/null) || REQUEST_BODY='{"tags":[],"intent_enum":"writing_feature","freshness":0,"context_summary":null}'
+" "$CONTEXT_RESULT" 2>/dev/null) || REQUEST_BODY='{"tags":[],"freshness":0}'
 
 RESPONSE=$(curl -s --max-time 5 \
   -H "Authorization: Bearer $TOKEN" \

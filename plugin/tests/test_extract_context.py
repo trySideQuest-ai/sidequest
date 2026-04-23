@@ -131,42 +131,6 @@ class TestFreshness(unittest.TestCase):
         self.assertEqual(self.ec.compute_freshness(10), 1.0)
 
 
-class TestIntentClassifier(unittest.TestCase):
-    def setUp(self):
-        self.ec = _load_extractor_module()
-        self.config = self.ec.load_config('intents.json')
-
-    def test_defaults_to_writing_feature(self):
-        self.assertEqual(
-            self.ec.classify_intent(self.config, transcript_text='', diff_text=''),
-            'writing_feature',
-        )
-
-    def test_fixing_bug_from_commit_prefix(self):
-        self.assertEqual(
-            self.ec.classify_intent(self.config, commit_msg='fix: null deref in auth middleware'),
-            'fixing_bug',
-        )
-
-    def test_docs_from_commit_prefix(self):
-        self.assertEqual(
-            self.ec.classify_intent(self.config, commit_msg='docs: expand README'),
-            'documentation',
-        )
-
-    def test_refactor_commit_prefix(self):
-        self.assertEqual(
-            self.ec.classify_intent(self.config, commit_msg='refactor: split handler module'),
-            'refactoring',
-        )
-
-    def test_setup_from_branch_prefix(self):
-        self.assertEqual(
-            self.ec.classify_intent(self.config, branch='setup-ci-pipeline'),
-            'setup_scaffolding',
-        )
-
-
 class TestTranscriptReader(unittest.TestCase):
     def setUp(self):
         self.ec = _load_extractor_module()
@@ -230,9 +194,9 @@ class TestTranscriptReader(unittest.TestCase):
 
 
 class TestFullModeOutput(unittest.TestCase):
-    """Sanity check that `--mode full` emits freshness + intent_enum."""
+    """Sanity check that `--mode full` emits weighted_tags + freshness."""
 
-    def test_full_mode_emits_freshness_and_intent(self):
+    def test_full_mode_emits_weighted_tags_and_freshness(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
             f.write(json.dumps(make_entry('fix my postgresql query please')) + '\n')
             f.flush()
@@ -245,7 +209,6 @@ class TestFullModeOutput(unittest.TestCase):
             data = json.loads(result.stdout.strip())
             self.assertIn('weighted_tags', data)
             self.assertIn('freshness', data)
-            self.assertIn('intent_enum', data)
             self.assertIsInstance(data['freshness'], (int, float))
 
 
