@@ -107,6 +107,42 @@ if [ "$SESSION_MSG_COUNT" -lt "$SESSION_MIN_MESSAGES" ]; then
 fi
 
 # ============================================================================
+# PHASE 1.6: Inter-quest gate — require N user turns since last quest fired
+# why: even with 20-min cooldown, rapid-fire messages within a cooldown window
+# would fire as soon as cooldown expires. Counting turns between quests ensures
+# real work happened between pitches, not just elapsed time. Persistent counter
+# in timing-state.json; reset on quest fire (PHASE 9).
+# ============================================================================
+
+MIN_MESSAGES_BETWEEN_QUESTS=10
+
+MESSAGES_SINCE_LAST_QUEST=$(python3 -c "
+import json, os, sys, tempfile
+f = os.path.expanduser('~/.sidequest/timing-state.json')
+try:
+    with open(f) as fp:
+        t = json.load(fp)
+except Exception:
+    t = {}
+count = int(t.get('messages_since_last_quest', 0)) + 1
+t['messages_since_last_quest'] = count
+d = os.path.dirname(f)
+os.makedirs(d, exist_ok=True)
+try:
+    fd, tmp = tempfile.mkstemp(dir=d)
+    with os.fdopen(fd, 'w') as fp:
+        json.dump(t, fp)
+    os.rename(tmp, f)
+except Exception:
+    pass
+print(count)
+" 2>/dev/null || echo 0)
+
+if [ "$MESSAGES_SINCE_LAST_QUEST" -lt "$MIN_MESSAGES_BETWEEN_QUESTS" ]; then
+  exit 0
+fi
+
+# ============================================================================
 # PHASE 2: Load timing state (atomic read)
 # ============================================================================
 
@@ -403,15 +439,20 @@ import json
 import os
 import tempfile
 
-timing_state = {
-    'last_hook_fire': $CURRENT_TIME,
-    'last_quest_shown': $CURRENT_TIME,
-    'daily_quest_count': $NEW_DAILY_COUNT,
-    'daily_reset_date': '$TODAY'
-}
+timing_file = os.path.expanduser('~/.sidequest/timing-state.json')
+try:
+    with open(timing_file) as f:
+        timing_state = json.load(f)
+except:
+    timing_state = {}
+
+timing_state['last_hook_fire'] = $CURRENT_TIME
+timing_state['last_quest_shown'] = $CURRENT_TIME
+timing_state['daily_quest_count'] = $NEW_DAILY_COUNT
+timing_state['daily_reset_date'] = '$TODAY'
+timing_state['messages_since_last_quest'] = 0
 
 # Atomic write: write to temp, then rename
-timing_file = os.path.expanduser('~/.sidequest/timing-state.json')
 os.makedirs(os.path.dirname(timing_file), exist_ok=True)
 temp_fd, temp_path = tempfile.mkstemp(dir=os.path.dirname(timing_file))
 try:
