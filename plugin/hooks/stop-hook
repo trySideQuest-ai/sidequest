@@ -72,6 +72,41 @@ fi
 API_BASE="${API_BASE:-https://api.trysidequest.ai}"
 
 # ============================================================================
+# PHASE 1.5: Session-depth gate — require N user turns in session before firing
+# why: first message of a fresh session has only static repo-scan context (no
+# live conversation signal), producing random-feeling quest fires. Naive per-
+# session counter; session-start hook resets to 0.
+# ============================================================================
+
+SESSION_MIN_MESSAGES=5
+
+SESSION_MSG_COUNT=$(python3 -c "
+import json, os, sys, tempfile
+f = os.path.expanduser('~/.sidequest/session-state.json')
+try:
+    with open(f) as fp:
+        s = json.load(fp)
+except Exception:
+    s = {}
+count = int(s.get('session_msg_count', 0)) + 1
+s['session_msg_count'] = count
+d = os.path.dirname(f)
+os.makedirs(d, exist_ok=True)
+try:
+    fd, tmp = tempfile.mkstemp(dir=d)
+    with os.fdopen(fd, 'w') as fp:
+        json.dump(s, fp)
+    os.rename(tmp, f)
+except Exception:
+    pass
+print(count)
+" 2>/dev/null || echo 0)
+
+if [ "$SESSION_MSG_COUNT" -lt "$SESSION_MIN_MESSAGES" ]; then
+  exit 0
+fi
+
+# ============================================================================
 # PHASE 2: Load timing state (atomic read)
 # ============================================================================
 

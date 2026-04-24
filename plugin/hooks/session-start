@@ -31,6 +31,27 @@ print(json.dumps({
 }
 
 # ============================================================================
+# PHASE 0: Reset per-session state (session-depth counter)
+# why: stop-hook reads session_msg_count + gates quest fires below N turns,
+# giving live conversation signal time to form before any quest is sent.
+# ============================================================================
+
+python3 -c "
+import json, os, tempfile, time
+f = os.path.expanduser('~/.sidequest/session-state.json')
+d = os.path.dirname(f)
+os.makedirs(d, exist_ok=True)
+state = {'session_msg_count': 0, 'session_started_at': int(time.time())}
+try:
+    fd, tmp = tempfile.mkstemp(dir=d)
+    with os.fdopen(fd, 'w') as fp:
+        json.dump(state, fp)
+    os.rename(tmp, f)
+except Exception:
+    pass
+" 2>/dev/null || true
+
+# ============================================================================
 # PHASE 1: Layer 1 Context Extraction (static, cached, data-driven)
 # Uses config/patterns.json for CLAUDE.md scanning, config/config-files.json
 # for project file detection (SRC-04: pyproject.toml, go.mod, Cargo.toml, etc.)
