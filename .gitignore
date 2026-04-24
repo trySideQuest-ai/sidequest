@@ -29,3 +29,6 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 .mypy_cache/
+
+# Plugin packaging output
+dist/
