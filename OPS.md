@@ -149,3 +149,55 @@ Watch for these regression indicators after any release:
 - Primary on-call: 71125175+tomer-shavit@users.noreply.github.com
 - Escalation: co-founder (same channel)
 - Pilot user channel: Slack `#sidequest-pilot`
+
+## Embedding Vector Privacy & Security
+
+Vectors are now part of how we serve relevant tools to developers. They are deliberately less informative than plaintext, but they are not zero-information — this section documents how we handle them.
+
+### What Embeddings Are
+
+- **Query vectors:** 2 × 384-dim float arrays (user message + assistant message, ≤128 tokens each). Computed on-device in the macOS app, sent once to `/quest`, discarded. Never logged, never persisted.
+- **Catalog vectors:** 384-dim embeddings of public product-description text. Chunked (≤120 tokens each), stored in the catalog DB, used for semantic search via approximate-nearest-neighbour index.
+
+### Attack Classes & Mitigations
+
+| Attack | Mechanism | Mitigation | Risk |
+|--------|-----------|------------|------|
+| Embedding inversion | Train a decoder to recover text from a stolen vector | Chunking (≤120 tokens), no user vectors in DB | Low — high attack cost, low-value recovery (public marketing copy) |
+| Gradient extraction from logs | Pull gradients out of vectors logged to observability | No vectors logged — only `selection_method` + scalar distance | Low — no vectors are logged |
+| Membership inference | Determine whether a specific message was embedded | Ephemeral query vectors, 128-token cap, single use | Low — no persistent vector cache |
+
+### Incident Response: Vector Leak
+
+**Symptom:** catalog DB backup leaked, or embedding table exposed via security audit.
+
+**Immediate actions:**
+
+1. Identify scope:
+   - Catalog vectors only → low impact (vectors of public product descriptions). Document in `.planning/incidents/<date>-<slug>.md` and continue operations.
+   - User query vectors → these are ephemeral by design and should never appear in any backup. If they do, treat as a serious bug.
+
+2. If catalog vectors only:
+   - Inversion is computationally expensive. No emergency action required.
+   - File a follow-up to evaluate vector quantization or hashing in the next milestone.
+
+3. If query vectors are found anywhere persistent:
+   - **Stop.** Audit the request handler for accidental logging or caching paths.
+   - Rotate any backups created during the affected window.
+   - Notify pilot users in Slack `#sidequest-pilot`: "We found a path that may have written ephemeral vectors to disk. Vectors carry less information than plaintext, but we have removed the path and rotated affected storage. No action needed on your side."
+
+4. Post-mortem:
+   - Root cause: what allowed the vectors to be persisted? (verbose logging, missing redaction, framework default).
+   - Fix: redact at the source. Treat any `embedding`-shaped value as sensitive in logs.
+   - Open a hardening backlog item: hash vectors before logging, or quantize to INT8.
+
+### Monitoring Signals: Embedding Health
+
+- **Model fetch failures** during import — log line "Failed to load ONNX embedder" or "tokenizer unavailable". Action: confirm Node version ≥ 20 and that the embedding package is installed; bump the import job.
+- **Selection-method drift** — events show a high share of `selection_method` values that bypass the vector path (e.g., tag-only fallback). Action: check inference latency in `/quest` and confirm the on-device app is producing vectors.
+- **NaN / Infinity in stored vectors** — diagnostic SQL: any embedding row with non-finite components. Action: revalidate the inference path; the inference layer should never write non-finite values.
+- **Chunk-count anomalies** during import — fewer chunks per quest than expected, or many quests with zero chunks. Action: re-run the catalog verification script and investigate any uncovered quests.
+
+### Privacy Principle
+
+Vectors are privacy-forward, not privacy-perfect. Conversation text never leaves the device; what reaches the server is a 384-dim numerical fingerprint of the last message pair. Recovery is computationally expensive and the recovered content (marketing copy on the catalog side, ≤128 tokens of recent context on the query side) does not justify the cost. We accept this residual risk for v2.1 and re-assess annually.
