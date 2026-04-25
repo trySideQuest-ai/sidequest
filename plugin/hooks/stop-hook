@@ -409,6 +409,7 @@ USER_MSG=$(echo "$LAST_MESSAGES" | python3 -c "import json, sys; obj = json.load
 ASST_MSG=$(echo "$LAST_MESSAGES" | python3 -c "import json, sys; obj = json.load(sys.stdin); print(obj.get('asst_msg', ''))" 2>/dev/null) || ASST_MSG=""
 
 VECTORS='{"user_vec":null,"asst_vec":null}'
+INFERENCE_MS=""
 
 if [ -n "$USER_MSG" ] || [ -n "$ASST_MSG" ]; then
   IPC_REQUEST=$(USER_MSG="$USER_MSG" ASST_MSG="$ASST_MSG" python3 -c "
@@ -423,7 +424,12 @@ except Exception:
 " 2>/dev/null) || IPC_REQUEST=''
 
   if [ -n "$IPC_REQUEST" ] && [ "$IPC_REQUEST" != "{}" ]; then
+    IPC_T_START=$(python3 -c "import time; print(int(time.time()*1000))" 2>/dev/null || echo 0)
     IPC_RESPONSE=$(printf '%s' "$IPC_REQUEST" | timeout 1 nc -U "$SOCKET_PATH" 2>/dev/null) || IPC_RESPONSE=''
+    IPC_T_END=$(python3 -c "import time; print(int(time.time()*1000))" 2>/dev/null || echo 0)
+    if [ "$IPC_T_START" -gt 0 ] && [ "$IPC_T_END" -gt "$IPC_T_START" ]; then
+      INFERENCE_MS=$((IPC_T_END - IPC_T_START))
+    fi
 
     if [ -n "$IPC_RESPONSE" ]; then
       VECTORS=$(IPC_RESPONSE="$IPC_RESPONSE" python3 -c "
@@ -442,6 +448,28 @@ except Exception:
     fi
   fi
 fi
+
+# ============================================================================
+# PHASE 6.6: Compose client_version (plugin VERSION + app CFBundleShortVersionString)
+# Used by /quest payload for ANALYTICS-04 observability. Server records both
+# client_version + inference_ms in events.metadata; missing values record null.
+# ============================================================================
+
+PLUGIN_VERSION_FILE="${SCRIPT_DIR_HOOKS}/../VERSION"
+PLUGIN_VERSION="unknown"
+if [ -f "$PLUGIN_VERSION_FILE" ]; then
+  PLUGIN_VERSION=$(tr -d '[:space:]' < "$PLUGIN_VERSION_FILE" 2>/dev/null || echo "unknown")
+  [ -z "$PLUGIN_VERSION" ] && PLUGIN_VERSION="unknown"
+fi
+
+APP_VERSION="unknown"
+APP_PLIST="/Applications/SideQuest.app/Contents/Info.plist"
+if [ -f "$APP_PLIST" ]; then
+  APP_VERSION=$(defaults read "$APP_PLIST" CFBundleShortVersionString 2>/dev/null | tr -d '[:space:]' || echo "unknown")
+  [ -z "$APP_VERSION" ] && APP_VERSION="unknown"
+fi
+
+CLIENT_VERSION="plugin-${PLUGIN_VERSION}+app-${APP_VERSION}"
 
 # ============================================================================
 # PHASE 7: Fetch quest from API
@@ -478,8 +506,19 @@ if vectors.get('user_vec'):
     body['user_vec'] = vectors['user_vec']
 if vectors.get('asst_vec'):
     body['asst_vec'] = vectors['asst_vec']
+client_version = sys.argv[3] if len(sys.argv) > 3 else ''
+if client_version:
+    body['client_version'] = client_version
+inference_ms_arg = sys.argv[4] if len(sys.argv) > 4 else ''
+if inference_ms_arg:
+    try:
+        ms = int(inference_ms_arg)
+        if 0 <= ms <= 10000:
+            body['inference_ms'] = ms
+    except ValueError:
+        pass
 print(json.dumps(body))
-" "$CONTEXT_RESULT" "$VECTORS" 2>/dev/null) || REQUEST_BODY='{"tags":[],"freshness":0}'
+" "$CONTEXT_RESULT" "$VECTORS" "$CLIENT_VERSION" "$INFERENCE_MS" 2>/dev/null) || REQUEST_BODY='{"tags":[],"freshness":0}'
 
 RESPONSE=$(curl -s --max-time 5 \
   -H "Authorization: Bearer $TOKEN" \
