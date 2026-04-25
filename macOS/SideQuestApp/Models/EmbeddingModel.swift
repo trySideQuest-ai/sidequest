@@ -79,24 +79,34 @@ actor EmbeddingModel {
   /// 3 attempts with 1s, 2s, 4s delays. 30s timeout per attempt.
   /// Verifies SHA256 before caching. Returns true on success.
   private func fetchFromS3() async -> Bool {
-    // Read config.json for S3 URL and expected SHA256
-    let configPath = FileManager.default.homeDirectoryForCurrentUser
-      .appendingPathComponent(".sidequest/config.json").path
+    // model_url + model_sha256 live in the CDN config (`get.trysidequest.ai/config.json`),
+    // which the plugin's session-start hook caches at ~/.sidequest/remote-config.json.
+    // The user-local ~/.sidequest/config.json holds only their token + settings — it
+    // does NOT carry these keys. Read remote-config first; fall back to local config
+    // for backward compat with any future hand-edited deploys.
+    let home = FileManager.default.homeDirectoryForCurrentUser
+    let candidatePaths = [
+      home.appendingPathComponent(".sidequest/remote-config.json").path,
+      home.appendingPathComponent(".sidequest/config.json").path
+    ]
 
     var modelURL: URL?
     var expectedSHA256: String?
 
-    if let configData = try? Data(contentsOf: URL(fileURLWithPath: configPath)) {
-      if let json = try? JSONSerialization.jsonObject(with: configData) as? [String: Any],
-         let urlString = json["model_url"] as? String,
-         let sha256 = json["model_sha256"] as? String {
-        modelURL = URL(string: urlString)
-        expectedSHA256 = sha256
+    for configPath in candidatePaths {
+      guard let configData = try? Data(contentsOf: URL(fileURLWithPath: configPath)),
+            let json = try? JSONSerialization.jsonObject(with: configData) as? [String: Any],
+            let urlString = json["model_url"] as? String,
+            let sha256 = json["model_sha256"] as? String else {
+        continue
       }
+      modelURL = URL(string: urlString)
+      expectedSHA256 = sha256
+      break
     }
 
     guard let url = modelURL, let expectedHash = expectedSHA256 else {
-      ErrorHandler.logInfo("Model URL or SHA256 missing from config.json")
+      ErrorHandler.logInfo("Model URL or SHA256 missing from remote-config.json + config.json")
       return false
     }
 
