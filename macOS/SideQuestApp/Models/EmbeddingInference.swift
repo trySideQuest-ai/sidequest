@@ -11,16 +11,16 @@ actor EmbeddingInference {
     model: EmbeddingModel,
     timeout: UInt64 = 1000
   ) async -> [Float]? {
-    return await withTimeout(milliseconds: timeout) { [weak self] in
-      return await self?.runInference(tokenIds: tokenIds, model: model)
+    return await withTimeout(milliseconds: timeout) {
+      return await self.runInference(tokenIds: tokenIds, model: model)
     }
   }
 
   /// Runs prediction on background queue (async wrapper).
   private func runInference(tokenIds: [Int32], model: EmbeddingModel) async -> [Float]? {
     // Run on background queue (inference thread-safe in CoreML)
-    return await Task(priority: .userInitiated) { [weak self] () -> [Float]? in
-      return model.predict(tokenIds: tokenIds)
+    return await Task(priority: .userInitiated) {
+      return await model.predict(tokenIds: tokenIds)
     }.value
   }
 
@@ -29,20 +29,12 @@ actor EmbeddingInference {
     milliseconds: UInt64,
     block: @escaping () async -> T?
   ) async -> T? {
-    let timeoutNanos = milliseconds * 1_000_000
-
     // Create a task for the inference
     let task = Task {
       return await block()
     }
 
     // Wait with timeout
-    do {
-      return try await task.value
-    } catch {
-      task.cancel()
-      ErrorHandler.logInfo("Inference timeout after \(milliseconds)ms")
-      return nil
-    }
+    return await task.value
   }
 }

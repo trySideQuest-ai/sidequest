@@ -5,7 +5,14 @@
 	};
 	objectVersion = 56;
 	objects = {
+
 /* Begin PBXBuildFile section */
+		0920B02C16DFBE9853C81BCE /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 15351A8D33FBB02202171BFC /* Foundation.framework */; };
+		2999D741B3345D93BA10CDC7 /* EmbedParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3762455F7405AC6EEC119977 /* EmbedParityTests.swift */; };
+		632331906DCC750B494222D0 /* EmbeddingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF8EEFB98C16A8238B0E88B /* EmbeddingService.swift */; };
+		698053954BE4BBDD94E3D2FC /* InferenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D5B821CDA019062689A566 /* InferenceTests.swift */; };
+		8B872527AD467801BFDB522B /* EmbeddingInference.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAAF4589668DED6CB402A2E1 /* EmbeddingInference.swift */; };
+		9E5AE21B57448E2E6866C619 /* ModelFetchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C63CB7169561FFB3CF317CB2 /* ModelFetchTests.swift */; };
 		A10001 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10001 /* App.swift */; };
 		A10002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10002 /* AppDelegate.swift */; };
 		A10003 /* QuestData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10003 /* QuestData.swift */; };
@@ -24,9 +31,18 @@
 		A10025 /* QuestPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10025 /* QuestPresenter.swift */; };
 		A10026 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10026 /* HotkeyManager.swift */; };
 		A10030 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = B10030 /* Fonts */; };
+		B0B875A15CE33FBA2B6858A3 /* WordPieceTokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5325B9B72976F83066B0FECD /* WordPieceTokenizer.swift */; };
+		B8917D0DEF378EA46BE18147 /* TokenizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B09813D6F928C346179330B2 /* TokenizerTests.swift */; };
+		F18892C80213AF2477078F71 /* EmbeddingModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8B3A23FD11303FA5AFD5678 /* EmbeddingModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		15351A8D33FBB02202171BFC /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		3762455F7405AC6EEC119977 /* EmbedParityTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EmbedParityTests.swift; path = SideQuestAppTests/EmbedParityTests.swift; sourceTree = "<group>"; };
+		47D5B821CDA019062689A566 /* InferenceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = InferenceTests.swift; path = SideQuestAppTests/InferenceTests.swift; sourceTree = "<group>"; };
+		5325B9B72976F83066B0FECD /* WordPieceTokenizer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WordPieceTokenizer.swift; path = SideQuestApp/Models/WordPieceTokenizer.swift; sourceTree = "<group>"; };
+		ADF8EEFB98C16A8238B0E88B /* EmbeddingService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EmbeddingService.swift; path = SideQuestApp/Models/EmbeddingService.swift; sourceTree = "<group>"; };
+		B09813D6F928C346179330B2 /* TokenizerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TokenizerTests.swift; path = SideQuestAppTests/TokenizerTests.swift; sourceTree = "<group>"; };
 		B10001 /* App.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		B10002 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B10003 /* QuestData.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = QuestData.swift; sourceTree = "<group>"; };
@@ -47,48 +63,461 @@
 		B10026 /* HotkeyManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
 		B10030 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Fonts; path = Resources/Fonts; sourceTree = "<group>"; };
 		B10100 /* SideQuestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SideQuestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C63CB7169561FFB3CF317CB2 /* ModelFetchTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelFetchTests.swift; path = SideQuestAppTests/ModelFetchTests.swift; sourceTree = "<group>"; };
+		E8B3A23FD11303FA5AFD5678 /* EmbeddingModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EmbeddingModel.swift; path = SideQuestApp/Models/EmbeddingModel.swift; sourceTree = "<group>"; };
+		F78FF22AA9962F790DA2571B /* SideQuestAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SideQuestAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FAAF4589668DED6CB402A2E1 /* EmbeddingInference.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EmbeddingInference.swift; path = SideQuestApp/Models/EmbeddingInference.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		C10001 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		19D1AB44C66916D8BEFB90C9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0920B02C16DFBE9853C81BCE /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		D10001 /* = */ = {isa = PBXGroup; children = (D10002 /* SideQuestApp */, D10005 /* Products */); sourceTree = "<group>"; };
-		D10002 /* SideQuestApp */ = {isa = PBXGroup; children = (B10001 /* App.swift */, B10002 /* AppDelegate.swift */, B10015 /* Info.plist */, D10003 /* Models */, D10004 /* Services */, D10006 /* Views */, D10007 /* Resources */); path = SideQuestApp; sourceTree = "<group>"; };
-		D10003 /* Models */ = {isa = PBXGroup; children = (B10003 /* QuestData.swift */, B10023 /* Quest.swift */); name = Models; path = Models; sourceTree = "<group>"; };
-		D10004 /* Services */ = {isa = PBXGroup; children = (B10004 /* APIClient.swift */, B10005 /* ErrorHandler.swift */, B10006 /* EventQueue.swift */, B10007 /* EventSyncManager.swift */, B10008 /* IPCListener.swift */, B10010 /* StateManager.swift */, B10024 /* QuestPanel.swift */, B10025 /* QuestPresenter.swift */, B10026 /* HotkeyManager.swift */); name = Services; path = Services; sourceTree = "<group>"; };
-		D10005 /* Products */ = {isa = PBXGroup; children = (B10100 /* SideQuestApp.app */); name = Products; sourceTree = "<group>"; };
-		D10006 /* Views */ = {isa = PBXGroup; children = (B10012 /* MenuContentView.swift */, B10020 /* DesignTokens.swift */, B10021 /* SideQuestCard.swift */, B10022 /* QuestStackView.swift */); name = Views; path = Views; sourceTree = "<group>"; };
-		D10007 /* Resources */ = {isa = PBXGroup; children = (B10030 /* Fonts */); name = Resources; sourceTree = "<group>"; };
+		3C4446C31CDFB9324155EC6D /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				15351A8D33FBB02202171BFC /* Foundation.framework */,
+			);
+			name = "OS X";
+			sourceTree = "<group>";
+		};
+		8B051F4AFAD56A5377C1898E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				3C4446C31CDFB9324155EC6D /* OS X */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		D10001 = {
+			isa = PBXGroup;
+			children = (
+				D10002 /* SideQuestApp */,
+				D10005 /* Products */,
+				5325B9B72976F83066B0FECD /* WordPieceTokenizer.swift */,
+				E8B3A23FD11303FA5AFD5678 /* EmbeddingModel.swift */,
+				ADF8EEFB98C16A8238B0E88B /* EmbeddingService.swift */,
+				FAAF4589668DED6CB402A2E1 /* EmbeddingInference.swift */,
+				8B051F4AFAD56A5377C1898E /* Frameworks */,
+				B09813D6F928C346179330B2 /* TokenizerTests.swift */,
+				C63CB7169561FFB3CF317CB2 /* ModelFetchTests.swift */,
+				47D5B821CDA019062689A566 /* InferenceTests.swift */,
+				3762455F7405AC6EEC119977 /* EmbedParityTests.swift */,
+			);
+			sourceTree = "<group>";
+		};
+		D10002 /* SideQuestApp */ = {
+			isa = PBXGroup;
+			children = (
+				B10001 /* App.swift */,
+				B10002 /* AppDelegate.swift */,
+				B10015 /* Info.plist */,
+				D10003 /* Models */,
+				D10004 /* Services */,
+				D10006 /* Views */,
+				D10007 /* Resources */,
+			);
+			path = SideQuestApp;
+			sourceTree = "<group>";
+		};
+		D10003 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				B10003 /* QuestData.swift */,
+				B10023 /* Quest.swift */,
+			);
+			name = Models;
+			path = Models;
+			sourceTree = "<group>";
+		};
+		D10004 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				B10004 /* APIClient.swift */,
+				B10005 /* ErrorHandler.swift */,
+				B10006 /* EventQueue.swift */,
+				B10007 /* EventSyncManager.swift */,
+				B10008 /* IPCListener.swift */,
+				B10010 /* StateManager.swift */,
+				B10024 /* QuestPanel.swift */,
+				B10025 /* QuestPresenter.swift */,
+				B10026 /* HotkeyManager.swift */,
+			);
+			name = Services;
+			path = Services;
+			sourceTree = "<group>";
+		};
+		D10005 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B10100 /* SideQuestApp.app */,
+				F78FF22AA9962F790DA2571B /* SideQuestAppTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D10006 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				B10012 /* MenuContentView.swift */,
+				B10020 /* DesignTokens.swift */,
+				B10021 /* SideQuestCard.swift */,
+				B10022 /* QuestStackView.swift */,
+			);
+			name = Views;
+			path = Views;
+			sourceTree = "<group>";
+		};
+		D10007 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B10030 /* Fonts */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		E10001 /* SideQuestApp */ = {isa = PBXNativeTarget; buildConfigurationList = F10002 /* Build configuration list for PBXNativeTarget "SideQuestApp" */; buildPhases = (G10001 /* Sources */, C10001 /* Frameworks */, C10002 /* Resources */); buildRules = (); dependencies = (); name = SideQuestApp; packageProductDependencies = (); productName = SideQuestApp; productReference = B10100 /* SideQuestApp.app */; productType = "com.apple.product-type.application"; };
+		4892C3D45BF87F2D3F15E628 /* SideQuestAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EE663FA475F9BEA2BE8DA1B1 /* Build configuration list for PBXNativeTarget "SideQuestAppTests" */;
+			buildPhases = (
+				2B4A69FDBB171188609BF21D /* Sources */,
+				19D1AB44C66916D8BEFB90C9 /* Frameworks */,
+				13B24241619D7C02E1150D7D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SideQuestAppTests;
+			productName = SideQuestAppTests;
+			productReference = F78FF22AA9962F790DA2571B /* SideQuestAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		E10001 /* SideQuestApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F10002 /* Build configuration list for PBXNativeTarget "SideQuestApp" */;
+			buildPhases = (
+				G10001 /* Sources */,
+				C10001 /* Frameworks */,
+				C10002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SideQuestApp;
+			productName = SideQuestApp;
+			productReference = B10100 /* SideQuestApp.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		H10001 /* Project object */ = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600;}; buildConfigurationList = F10001 /* Build configuration list for PBXProject "SideQuestApp" */; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = D10001; packageReferences = (); productRefGroup = D10005 /* Products */; projectDirPath = ""; projectRoot = ""; targets = (E10001 /* SideQuestApp */); };
+		H10001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = F10001 /* Build configuration list for PBXProject "SideQuestApp" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D10001;
+			productRefGroup = D10005 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E10001 /* SideQuestApp */,
+				4892C3D45BF87F2D3F15E628 /* SideQuestAppTests */,
+			);
+		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		C10002 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10030 /* Fonts in Resources */); runOnlyForDeploymentPostprocessing = 0; };
+		13B24241619D7C02E1150D7D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10030 /* Fonts in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		G10001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10001, A10002, A10003, A10004, A10005, A10006, A10007, A10008, A10010, A10012, A10020, A10021, A10022, A10023, A10024, A10025, A10026); runOnlyForDeploymentPostprocessing = 0; };
+		2B4A69FDBB171188609BF21D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B8917D0DEF378EA46BE18147 /* TokenizerTests.swift in Sources */,
+				9E5AE21B57448E2E6866C619 /* ModelFetchTests.swift in Sources */,
+				698053954BE4BBDD94E3D2FC /* InferenceTests.swift in Sources */,
+				2999D741B3345D93BA10CDC7 /* EmbedParityTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		G10001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10001 /* App.swift in Sources */,
+				A10002 /* AppDelegate.swift in Sources */,
+				A10003 /* QuestData.swift in Sources */,
+				A10004 /* APIClient.swift in Sources */,
+				A10005 /* ErrorHandler.swift in Sources */,
+				A10006 /* EventQueue.swift in Sources */,
+				A10007 /* EventSyncManager.swift in Sources */,
+				A10008 /* IPCListener.swift in Sources */,
+				A10010 /* StateManager.swift in Sources */,
+				A10012 /* MenuContentView.swift in Sources */,
+				A10020 /* DesignTokens.swift in Sources */,
+				A10021 /* SideQuestCard.swift in Sources */,
+				A10022 /* QuestStackView.swift in Sources */,
+				A10023 /* Quest.swift in Sources */,
+				A10024 /* QuestPanel.swift in Sources */,
+				A10025 /* QuestPresenter.swift in Sources */,
+				A10026 /* HotkeyManager.swift in Sources */,
+				B0B875A15CE33FBA2B6858A3 /* WordPieceTokenizer.swift in Sources */,
+				F18892C80213AF2477078F71 /* EmbeddingModel.swift in Sources */,
+				632331906DCC750B494222D0 /* EmbeddingService.swift in Sources */,
+				8B872527AD467801BFDB522B /* EmbeddingInference.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		J10001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; CLANG_ANALYZER_NONNULL = YES; CLANG_CXX_LANGUAGE_DIALECT = "c++20"; CLANG_CXX_LIBRARY = "libc++"; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES; CLANG_WARN_BOOL_CONVERSION = YES; CLANG_WARN_COMMA = YES; CLANG_WARN_CONSTANT_CONVERSION = YES; CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES; CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR; CLANG_WARN_EMPTY_BODY = YES; CLANG_WARN_ENUM_CONVERSION = YES; CLANG_WARN_INFINITE_RECURSION = YES; CLANG_WARN_INT_CONVERSION = YES; CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES; CLANG_WARN_OBJC_LITERAL_CONVERSION = YES; CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR; CLANG_WARN_RANGE_LOOP_ANALYSIS = YES; CLANG_WARN_STRICT_PROTOTYPES = YES; CLANG_WARN_SUSPICIOUS_MOVE = YES; CLANG_WARN_UNREACHABLE_CODE = YES; CLANG_WARN__DUPLICATE_METHOD_MATCH = YES; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; COPY_PHASE_STRIP = NO; DEAD_CODE_STRIPPING = YES; DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_STRICT_OBJC_MSGSEND = YES; ENABLE_TESTABILITY = YES; GCC_C_LANGUAGE_DIALECT = gnu17; GCC_DYNAMIC_NO_PIC = NO; GCC_NO_COMMON_BLOCKS = YES; GCC_OPTIMIZATION_LEVEL = 0; GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)"); GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR; GCC_WARN_UNDECLARED_SELECTOR = YES; GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE; GCC_WARN_UNUSED_FUNCTION = YES; GCC_WARN_UNUSED_VARIABLE = YES; INFOPLIST_FILE = SideQuestApp/Info.plist; MACOSX_DEPLOYMENT_TARGET = 13.0; MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE; MTL_FAST_MATH = YES; ONLY_ACTIVE_ARCH = YES; PRODUCT_BUNDLE_IDENTIFIER = ai.sidequest.app; PRODUCT_NAME = SideQuestApp; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_STRICT_CONCURRENCY = minimal; SWIFT_VERSION = 5.0; }; name = Debug; };
-		J10002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; CLANG_ANALYZER_NONNULL = YES; CLANG_CXX_LANGUAGE_DIALECT = "c++20"; CLANG_CXX_LIBRARY = "libc++"; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES; CLANG_WARN_BOOL_CONVERSION = YES; CLANG_WARN_COMMA = YES; CLANG_WARN_CONSTANT_CONVERSION = YES; CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES; CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR; CLANG_WARN_EMPTY_BODY = YES; CLANG_WARN_ENUM_CONVERSION = YES; CLANG_WARN_INFINITE_RECURSION = YES; CLANG_WARN_INT_CONVERSION = YES; CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES; CLANG_WARN_OBJC_LITERAL_CONVERSION = YES; CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR; CLANG_WARN_RANGE_LOOP_ANALYSIS = YES; CLANG_WARN_STRICT_PROTOTYPES = YES; CLANG_WARN_SUSPICIOUS_MOVE = YES; CLANG_WARN_UNREACHABLE_CODE = YES; CLANG_WARN__DUPLICATE_METHOD_MATCH = YES; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; COPY_PHASE_STRIP = YES; DEAD_CODE_STRIPPING = YES; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; ENABLE_STRICT_OBJC_MSGSEND = YES; GCC_C_LANGUAGE_DIALECT = gnu17; GCC_NO_COMMON_BLOCKS = YES; GCC_OPTIMIZATION_LEVEL = s; GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR; GCC_WARN_UNDECLARED_SELECTOR = YES; GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE; GCC_WARN_UNUSED_FUNCTION = YES; GCC_WARN_UNUSED_VARIABLE = YES; INFOPLIST_FILE = SideQuestApp/Info.plist; MACOSX_DEPLOYMENT_TARGET = 13.0; MTL_ENABLE_DEBUG_INFO = NO; MTL_FAST_MATH = YES; PRODUCT_BUNDLE_IDENTIFIER = ai.sidequest.app; PRODUCT_NAME = SideQuestApp; SDKROOT = macosx; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_STRICT_CONCURRENCY = minimal; SWIFT_VERSION = 5.0; }; name = Release; };
-		J10003 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CODE_SIGN_IDENTITY = "-"; ENABLE_NS_ASSERTIONS = YES; GCC_OPTIMIZATION_LEVEL = 0; INFOPLIST_FILE = SideQuestApp/Info.plist; MACOSX_DEPLOYMENT_TARGET = 13.0; PRODUCT_BUNDLE_IDENTIFIER = ai.sidequest.app; PRODUCT_NAME = SideQuestApp; SWIFT_STRICT_CONCURRENCY = minimal; SWIFT_VERSION = 5.0; }; name = Debug; };
-		J10004 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CODE_SIGN_IDENTITY = "-"; INFOPLIST_FILE = SideQuestApp/Info.plist; MACOSX_DEPLOYMENT_TARGET = 13.0; PRODUCT_BUNDLE_IDENTIFIER = ai.sidequest.app; PRODUCT_NAME = SideQuestApp; SWIFT_STRICT_CONCURRENCY = minimal; SWIFT_VERSION = 5.0; }; name = Release; };
+		A2BEF8E9497F9001473FF405 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				PRODUCT_BUNDLE_IDENTIFIER = ai.sidequest.appTests;
+				PRODUCT_NAME = SideQuestAppTests;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SideQuestApp.app/Contents/MacOS/SideQuestApp";
+			};
+			name = Release;
+		};
+		EB4998F4A1A7EF7F569E103C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				PRODUCT_BUNDLE_IDENTIFIER = ai.sidequest.appTests;
+				PRODUCT_NAME = SideQuestAppTests;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SideQuestApp.app/Contents/MacOS/SideQuestApp";
+			};
+			name = Debug;
+		};
+		J10001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_DIALECT = "c++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_DIALECT = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = SideQuestApp/Info.plist;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.sidequest.app;
+				PRODUCT_NAME = SideQuestApp;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		J10002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_DIALECT = "c++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = YES;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_DIALECT = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = s;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = SideQuestApp/Info.plist;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.sidequest.app;
+				PRODUCT_NAME = SideQuestApp;
+				SDKROOT = macosx;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		J10003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_IDENTITY = "-";
+				ENABLE_NS_ASSERTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INFOPLIST_FILE = SideQuestApp/Info.plist;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.sidequest.app;
+				PRODUCT_NAME = SideQuestApp;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		J10004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_IDENTITY = "-";
+				INFOPLIST_FILE = SideQuestApp/Info.plist;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.sidequest.app;
+				PRODUCT_NAME = SideQuestApp;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		F10001 /* Build configuration list for PBXProject "SideQuestApp" */ = {isa = XCConfigurationList; buildConfigurations = (J10001 /* Debug */, J10002 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		F10002 /* Build configuration list for PBXNativeTarget "SideQuestApp" */ = {isa = XCConfigurationList; buildConfigurations = (J10003 /* Debug */, J10004 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		EE663FA475F9BEA2BE8DA1B1 /* Build configuration list for PBXNativeTarget "SideQuestAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A2BEF8E9497F9001473FF405 /* Release */,
+				EB4998F4A1A7EF7F569E103C /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F10001 /* Build configuration list for PBXProject "SideQuestApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				J10001 /* Debug */,
+				J10002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F10002 /* Build configuration list for PBXNativeTarget "SideQuestApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				J10003 /* Debug */,
+				J10004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 	};
 	rootObject = H10001 /* Project object */;

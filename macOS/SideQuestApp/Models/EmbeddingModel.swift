@@ -173,15 +173,14 @@ actor EmbeddingModel {
         input[i] = NSNumber(value: tokenId)
       }
 
-      // Create input dictionary and run inference
-      let inputDict: [String: Any] = ["input_ids": input]
-      guard let output = try model.prediction(from: inputDict) as? [String: MLFeatureValue] else {
-        return nil
-      }
+      // Create input dictionary and run inference using MLDictionaryFeatureProvider
+      let inputDict: [String: MLFeatureValue] = ["input_ids": MLFeatureValue(multiArray: input)]
+      let inputProvider = try MLDictionaryFeatureProvider(dictionary: inputDict)
+      let output = try model.prediction(from: inputProvider)
 
       // Extract embeddings from output
       // Expected output key: "embeddings" or similar (model-dependent)
-      guard let embeddingsFeature = output["embeddings"] else {
+      guard let embeddingsFeature = output.featureValue(for: "embeddings") else {
         ErrorHandler.logInfo("Model output missing 'embeddings' key")
         return nil
       }

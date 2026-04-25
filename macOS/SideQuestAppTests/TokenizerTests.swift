@@ -162,7 +162,7 @@ class TokenizerTests: XCTestCase {
     }
 
     let (tokens, unkCount) = tok.tokenize("unknownword xyz")
-    XCTAssertGreater(unkCount, 0, "Should have [UNK] tokens for unknown words")
+    XCTAssert(unkCount > 0, "Should have [UNK] tokens for unknown words")
   }
 
   func testTokenizePadding() {
@@ -197,7 +197,7 @@ class TokenizerTests: XCTestCase {
 
     let (tokens, unkCount) = tok.tokenize("hello unknownword xyz")
     let rate = tok.unkRate(tokenIds: tokens)
-    XCTAssertGreater(rate, 0.0, "UNK rate should be > 0 when there are unknown tokens")
+    XCTAssert(rate > 0.0, "UNK rate should be > 0 when there are unknown tokens")
   }
 
   func testUnkRateForKnownWords() {
@@ -243,7 +243,7 @@ class TokenizerTests: XCTestCase {
     let (tokens, _) = tok.tokenize("a")
     // Should have padding tokens at the end
     let paddingTokens = tokens.filter { $0 == 0 }
-    XCTAssertGreater(paddingTokens.count, 0, "Should have padding tokens")
+    XCTAssert(paddingTokens.count > 0, "Should have padding tokens")
   }
 
   // MARK: - Edge Cases

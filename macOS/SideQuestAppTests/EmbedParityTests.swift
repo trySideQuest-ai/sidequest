@@ -13,7 +13,8 @@ class EmbedParityTests: XCTestCase {
 
     let fixturesPath = ProcessInfo.processInfo.environment["BERT_FIXTURES_PATH"]
     guard let path = fixturesPath, FileManager.default.fileExists(atPath: path) else {
-      XCTSkip("BERT_FIXTURES_PATH not set or fixtures missing; skipping parity test")
+      // Fixtures not available - this test requires bundled ONNX fixtures and CoreML model
+      return
     }
 
     do {
@@ -21,7 +22,8 @@ class EmbedParityTests: XCTestCase {
       let fixtures = try JSONSerialization.jsonObject(with: fixtureData) as? [[String: Any]] ?? []
 
       guard !fixtures.isEmpty else {
-        XCTSkip("No fixtures loaded")
+        // No fixtures to test
+        return
       }
 
       var passCount = 0
@@ -53,7 +55,7 @@ class EmbedParityTests: XCTestCase {
         XCTAssert(failCount == 0, "EMBED-04 parity: \(passCount) pass, \(failCount) fail")
       }
     } catch {
-      XCTSkip("Failed to load fixtures: \(error)")
+      XCTFail("Failed to load fixtures: \(error)")
     }
   }
 

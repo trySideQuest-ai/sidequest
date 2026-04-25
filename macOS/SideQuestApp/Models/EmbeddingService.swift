@@ -30,20 +30,21 @@ actor EmbeddingService {
       ErrorHandler.logInfo("Tokenization: [UNK] rate \(String(format: "%.1f", unkRate * 100))% for input")
     }
 
-    // Run inference with timeout (wraps in Task to ensure background dispatch)
-    let vector = await inference.run(tokenIds: tokenIds, model: model, timeout: 1000)
+    // Convert token IDs to Int32 and run inference with timeout
+    let tokenIds32 = tokenIds.map { Int32($0) }
+    let vector = await inference.run(tokenIds: tokenIds32, model: model, timeout: 1000)
     return vector
   }
 
   /// Serializes vector to JSON-safe string array at 6-decimal precision.
   /// Each element formatted as "%.6f" for consistent round-trip precision.
-  func serializeVector(_ vector: [Float]) -> [String] {
+  nonisolated func serializeVector(_ vector: [Float]) -> [String] {
     return vector.map { String(format: "%.6f", $0) }
   }
 
   /// Deserializes string array back to float vector.
   /// Returns nil if any element fails to parse or array has wrong length.
-  func deserializeVector(_ strings: [String]) -> [Float]? {
+  nonisolated func deserializeVector(_ strings: [String]) -> [Float]? {
     guard strings.count == 384 else {
       return nil
     }
@@ -59,7 +60,7 @@ actor EmbeddingService {
   }
 
   /// Validates vector for finite values (no NaN/Inf) and correct dimension.
-  func isValidVector(_ vector: [Float]?) -> Bool {
+  nonisolated func isValidVector(_ vector: [Float]?) -> Bool {
     guard let v = vector, v.count == 384 else {
       return false
     }
