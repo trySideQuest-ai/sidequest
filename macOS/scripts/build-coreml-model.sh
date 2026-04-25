@@ -41,7 +41,7 @@ MINILM_REVISION="c9745ed1d9f207416be6d2e6f8de32d1f16199bf"
 
 # Output names — versioned so the app can resolve which artifact to load
 # from a known cache path.
-MLMODEL="minilm-l6-v2-${MODEL_VERSION}.mlmodel"
+MLMODEL="minilm-l6-v2-${MODEL_VERSION}.mlpackage"
 MLMODELC="minilm-l6-v2-${MODEL_VERSION}.mlmodelc"
 VOCAB="minilm-l6-v2-${MODEL_VERSION}-vocab.txt"
 TARBALL="minilm-l6-v2-${MODEL_VERSION}.mlmodelc.tar.gz"
