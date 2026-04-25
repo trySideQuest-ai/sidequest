@@ -195,6 +195,33 @@ xcrun coremlcompiler compile "${MLMODEL}" .
   exit 1
 }
 
+# --- Step 3.5: scrub non-deterministic coremltools artifacts -----------------
+
+# Two sources of per-build non-determinism that break SHA reproducibility:
+#
+#   1. ${MLMODELC}/analytics/coremldata.bin embeds a per-save random
+#      "modelHash" used by Apple's MLAnalytics framework (Xcode/Instruments
+#      profiling). Not required for MLModel(contentsOf:) inference — many
+#      Apple-published .mlmodelc directories don't include this dir at all.
+#
+#   2. ${MLMODELC}/metadata.json's userDefinedMetadata dict serializes with
+#      non-deterministic key ordering (Python dict insertion order varies).
+#
+# Strip the analytics dir and re-serialize metadata.json with sorted keys so
+# the SHA256 is stable across builds. Without this, every download would
+# fail SHA verification on the client side.
+echo "[build] step 3.5: scrub non-deterministic artifacts"
+rm -rf "${MLMODELC}/analytics"
+python3 - <<PYTHON
+import json
+path = '${MLMODELC}/metadata.json'
+with open(path, 'r') as f:
+    data = json.load(f)
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2, sort_keys=True)
+    f.write('\n')
+PYTHON
+
 # --- Step 4: deterministic tarball (model dir + vocab.txt) ------------------
 
 [ -f "${VOCAB}" ] || {
