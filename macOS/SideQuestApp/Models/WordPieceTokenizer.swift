@@ -18,25 +18,30 @@ class WordPieceTokenizer {
   private let padId: Int = 0
   private var unkId: Int = 100  // Default; will be looked up from vocab
 
-  /// Initializes tokenizer with bundled vocabulary file.
+  /// Initializes tokenizer from a vocabulary file.
   /// - Parameters:
-  ///   - bundleVocabPath: Path to vocab.txt in app bundle
-  ///   - expectedSHA256: SHA256 hash of vocab.txt for integrity validation
-  /// - Throws: NSError if vocab file cannot be read or SHA256 mismatch
-  init(bundleVocabPath: String, expectedSHA256: String) throws {
+  ///   - bundleVocabPath: Path to vocab.txt
+  ///   - expectedSHA256: SHA256 of vocab.txt for integrity validation. Pass nil
+  ///     to skip validation — used when the source has already been verified
+  ///     upstream (e.g. vocab arrived inside a tarball whose tarball-level
+  ///     SHA256 was checked in EmbeddingModel.fetchFromS3).
+  /// - Throws: NSError if vocab file cannot be read, or if a non-nil
+  ///   expectedSHA256 mismatches.
+  init(bundleVocabPath: String, expectedSHA256: String? = nil) throws {
     // Read vocab file
     let vocabContent = try String(contentsOfFile: bundleVocabPath, encoding: .utf8)
 
-    // Validate SHA256
-    let data = vocabContent.data(using: .utf8) ?? Data()
-    let digest = SHA256.hash(data: data)
-    let computedHash = digest.map { String(format: "%02x", $0) }.joined()
+    if let expectedSHA256 = expectedSHA256 {
+      let data = vocabContent.data(using: .utf8) ?? Data()
+      let digest = SHA256.hash(data: data)
+      let computedHash = digest.map { String(format: "%02x", $0) }.joined()
 
-    guard computedHash == expectedSHA256 else {
-      ErrorHandler.logInfo("Vocab SHA256 mismatch: expected \(expectedSHA256), got \(computedHash)")
-      throw NSError(domain: "WordPieceTokenizer", code: 1, userInfo: [
-        NSLocalizedDescriptionKey: "Vocabulary SHA256 validation failed"
-      ])
+      guard computedHash == expectedSHA256 else {
+        ErrorHandler.logInfo("Vocab SHA256 mismatch: expected \(expectedSHA256), got \(computedHash)")
+        throw NSError(domain: "WordPieceTokenizer", code: 1, userInfo: [
+          NSLocalizedDescriptionKey: "Vocabulary SHA256 validation failed"
+        ])
+      }
     }
 
     // Parse vocab.txt: one word per line, index = line number

@@ -13,6 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var ipcListener: IPCListener?
     private var sleepWorkspaceObserver: NSObjectProtocol?
     private var eventSyncManager: EventSyncManager?
+    private var embeddingService: EmbeddingService?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Single-instance guard: if another SideQuestApp is already running, exit immediately
@@ -102,6 +103,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             ErrorHandler.logNetworkError(error, endpoint: "sidequest.sock")
         }
 
+        // Bring up the embedding pipeline asynchronously. fetchFromS3 + tar
+        // extract + MLModel load can take seconds on a cold launch; run it
+        // off the main thread so the menu bar app stays responsive. Until
+        // setEmbeddingService fires, the IPC handler returns null vectors
+        // and the server falls back to tag-only ranking — that's the
+        // correct degraded behavior, not an error.
+        Task.detached(priority: .utility) { [weak self] in
+            await self?.bootstrapEmbeddingService()
+        }
+
         // Register for sleep/wake notifications
         registerSleepWakeObserver()
 
@@ -121,6 +132,55 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 extension AppDelegate {
+    /// Loads the CoreML model + matching vocab, constructs the embedding
+    /// pipeline, plumbs it into the IPC listener so stop-hook IPC requests
+    /// can answer with real 384-dim vectors.
+    ///
+    /// Order matters and is verified at each step:
+    ///   1. EmbeddingModel.loadOrFetch downloads + extracts the tarball.
+    ///      That populates the cache dir with both the .mlmodelc directory
+    ///      and the matching vocab.txt — they ship together so vocab
+    ///      indices stay version-locked to the traced model.
+    ///   2. WordPieceTokenizer reads vocab from the same cache dir. SHA
+    ///      check is skipped because the tarball-level SHA already
+    ///      verified both files atomically.
+    ///   3. EmbeddingService composes tokenizer + model + inference and
+    ///      becomes the IPC listener's vector source.
+    ///
+    /// Any failure leaves embeddingService nil and IPC stays in
+    /// null-vector mode — server falls back to tag-only quest selection.
+    /// Never crashes the app on embedding failure (privacy/UX principle).
+    private func bootstrapEmbeddingService() async {
+        let model = EmbeddingModel()
+
+        let loaded = await model.loadOrFetch()
+        guard loaded else {
+            ErrorHandler.logInfo("Embedding bootstrap: model not available; IPC stays in null-vector mode")
+            return
+        }
+
+        let tokenizer: WordPieceTokenizer
+        do {
+            tokenizer = try WordPieceTokenizer(bundleVocabPath: model.vocabPath)
+        } catch {
+            ErrorHandler.logInfo("Embedding bootstrap: tokenizer init failed: \(error)")
+            return
+        }
+
+        let inference = EmbeddingInference()
+        let service = EmbeddingService(
+            tokenizer: tokenizer,
+            model: model,
+            inference: inference
+        )
+
+        await MainActor.run {
+            self.embeddingService = service
+            self.ipcListener?.setEmbeddingService(service)
+            ErrorHandler.logInfo("Embedding bootstrap: service wired into IPC listener")
+        }
+    }
+
     private func registerSleepWakeObserver() {
         sleepWorkspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
@@ -148,6 +208,12 @@ extension AppDelegate {
                 try ipcListener?.startListening()
             } catch {
                 ErrorHandler.logNetworkError(error, endpoint: "sidequest.sock")
+            }
+            // Reattach the embedding service if it was already up. A new
+            // IPCListener starts with no service handle, which would silently
+            // disable embeddings until next app restart.
+            if let service = embeddingService {
+                ipcListener?.setEmbeddingService(service)
             }
         }
     }

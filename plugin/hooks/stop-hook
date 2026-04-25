@@ -394,11 +394,61 @@ if [ ! -S "$SOCKET_PATH" ] || ! echo "" | nc -U -w1 "$SOCKET_PATH" 2>/dev/null; 
 fi
 
 # ============================================================================
+# PHASE 6.5: Extract embed vectors via IPC (WIRE-01)
+# Sends last user/asst messages to native app, receives 2x384-dim vectors,
+# packages them for the /quest body. Any failure (timeout, malformed
+# response, missing utils) leaves $VECTORS as null sentinels so PHASE 7
+# falls back to tag-only ranking. Hook still exits 0 silently per privacy
+# principle. Must run BEFORE PHASE 7 because vectors get injected into
+# the /quest POST body, not the IPC quest delivery.
+# ============================================================================
+
+SCRIPT_DIR_HOOKS="$(cd "$(dirname "$0")" && pwd)"
+
+USER_MSG=$(echo "$LAST_MESSAGES" | python3 -c "import json, sys; obj = json.load(sys.stdin); print(obj.get('user_msg', ''))" 2>/dev/null) || USER_MSG=""
+ASST_MSG=$(echo "$LAST_MESSAGES" | python3 -c "import json, sys; obj = json.load(sys.stdin); print(obj.get('asst_msg', ''))" 2>/dev/null) || ASST_MSG=""
+
+VECTORS='{"user_vec":null,"asst_vec":null}'
+
+if [ -n "$USER_MSG" ] || [ -n "$ASST_MSG" ]; then
+  IPC_REQUEST=$(USER_MSG="$USER_MSG" ASST_MSG="$ASST_MSG" python3 -c "
+import json, os, sys
+sys.path.insert(0, os.environ.get('SCRIPT_DIR_HOOKS', ''))
+try:
+    from ipc_utils import build_ipc_request
+    payload = build_ipc_request(user_msg=os.environ.get('USER_MSG', ''), asst_msg=os.environ.get('ASST_MSG', ''))
+    print(json.dumps(payload))
+except Exception:
+    print('{}')
+" 2>/dev/null) || IPC_REQUEST=''
+
+  if [ -n "$IPC_REQUEST" ] && [ "$IPC_REQUEST" != "{}" ]; then
+    IPC_RESPONSE=$(printf '%s' "$IPC_REQUEST" | timeout 1 nc -U "$SOCKET_PATH" 2>/dev/null) || IPC_RESPONSE=''
+
+    if [ -n "$IPC_RESPONSE" ]; then
+      VECTORS=$(IPC_RESPONSE="$IPC_RESPONSE" python3 -c "
+import json, os, sys
+sys.path.insert(0, os.environ.get('SCRIPT_DIR_HOOKS', ''))
+try:
+    from ipc_utils import validate_ipc_response, extract_vectors_for_server
+    resp = json.loads(os.environ.get('IPC_RESPONSE', ''))
+    if validate_ipc_response(resp):
+        print(json.dumps(extract_vectors_for_server(resp)))
+    else:
+        print(json.dumps({'user_vec': None, 'asst_vec': None}))
+except Exception:
+    print(json.dumps({'user_vec': None, 'asst_vec': None}))
+" 2>/dev/null) || VECTORS='{"user_vec":null,"asst_vec":null}'
+    fi
+  fi
+fi
+
+# ============================================================================
 # PHASE 7: Fetch quest from API
 # ============================================================================
 
 # Build request body:
-#   { tags: [{slug, weight, source, age_min}], freshness }
+#   { tags: [{slug, weight, source, age_min}], freshness, user_vec?, asst_vec? }
 REQUEST_BODY=$(python3 -c "
 import json, sys
 try:
@@ -420,8 +470,16 @@ body = {
     'tags': serialized_tags,
     'freshness': result.get('freshness', 0.0),
 }
+try:
+    vectors = json.loads(sys.argv[2])
+except Exception:
+    vectors = {}
+if vectors.get('user_vec'):
+    body['user_vec'] = vectors['user_vec']
+if vectors.get('asst_vec'):
+    body['asst_vec'] = vectors['asst_vec']
 print(json.dumps(body))
-" "$CONTEXT_RESULT" 2>/dev/null) || REQUEST_BODY='{"tags":[],"freshness":0}'
+" "$CONTEXT_RESULT" "$VECTORS" 2>/dev/null) || REQUEST_BODY='{"tags":[],"freshness":0}'
 
 RESPONSE=$(curl -s --max-time 5 \
   -H "Authorization: Bearer $TOKEN" \
@@ -461,18 +519,13 @@ if [ -z "$DISPLAY_TEXT" ] || [ -z "$TRACKING_URL" ]; then
 fi
 
 # ============================================================================
-# PHASE 7.5: Extract user and assistant messages from LAST_MESSAGES JSON
-# ============================================================================
-
-USER_MSG=$(echo "$LAST_MESSAGES" | python3 -c "import json, sys; obj = json.load(sys.stdin); print(obj.get('user_msg', ''))" 2>/dev/null) || USER_MSG=""
-ASST_MSG=$(echo "$LAST_MESSAGES" | python3 -c "import json, sys; obj = json.load(sys.stdin); print(obj.get('asst_msg', ''))" 2>/dev/null) || ASST_MSG=""
-
-# ============================================================================
 # PHASE 8: Send quest via IPC socket to native app
+# USER_MSG / ASST_MSG already extracted in PHASE 6.5 above; SCRIPT_DIR_HOOKS
+# already resolved there. Don't re-derive — single source of truth keeps the
+# two IPC payloads (embed_request + quest_send) consistent.
 # ============================================================================
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-"${SCRIPT_DIR}/xpc-socket-helper.sh" "$QUEST_ID" "$QUEST_ID" "$DISPLAY_TEXT" "$SUBTITLE" "$TRACKING_URL" "${REWARD_AMOUNT:-250}" "${BRAND_NAME:-Unknown}" "${CATEGORY:-DevTool}" "$USER_MSG" "$ASST_MSG" 2>/dev/null || {
+"${SCRIPT_DIR_HOOKS}/xpc-socket-helper.sh" "$QUEST_ID" "$QUEST_ID" "$DISPLAY_TEXT" "$SUBTITLE" "$TRACKING_URL" "${REWARD_AMOUNT:-250}" "${BRAND_NAME:-Unknown}" "${CATEGORY:-DevTool}" "$USER_MSG" "$ASST_MSG" 2>/dev/null || {
   log_error "Socket send failed for quest: $QUEST_ID"
   exit 0
 }

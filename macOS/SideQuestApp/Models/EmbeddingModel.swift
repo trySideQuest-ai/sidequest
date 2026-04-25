@@ -7,11 +7,24 @@ import CryptoKit
 actor EmbeddingModel {
   private var mlModel: MLModel?
   private let modelCachePath: String
-  private let modelVersion = "2.0.0"
+  private let modelVersion = "2.1.0"
 
   init() {
     let home = FileManager.default.homeDirectoryForCurrentUser
     self.modelCachePath = home.appendingPathComponent(".sidequest/models").path
+  }
+
+  /// Filesystem path of the .mlmodelc directory shipped inside the tarball.
+  /// AppDelegate reads this to know where the compiled model lives after fetch.
+  nonisolated var modelDirPath: String {
+    return "\(modelCachePath)/minilm-l6-v2-\(modelVersion).mlmodelc"
+  }
+
+  /// Filesystem path of the BERT vocab.txt shipped alongside the model in the
+  /// same tarball. WordPieceTokenizer is initialized from this path after
+  /// loadOrFetch() succeeds — pairing keeps vocab version-locked to the model.
+  nonisolated var vocabPath: String {
+    return "\(modelCachePath)/minilm-l6-v2-\(modelVersion)-vocab.txt"
   }
 
   /// Attempts to load model from cache; fetches from S3 if not cached.
@@ -36,22 +49,25 @@ actor EmbeddingModel {
   }
 
   /// Attempts to load model from local cache directory.
-  /// Validates file exists and loads via MLModel API with ANE configuration.
+  /// Validates the .mlmodelc directory exists and loads via MLModel API with
+  /// ANE configuration. .mlmodelc is a directory, not a file — use
+  /// isDirectory checking, not fileExists alone.
   private func tryLoadCached() -> MLModel? {
-    let modelPath = "\(modelCachePath)/minilm-l6-v2-\(modelVersion).mlmodelc"
-    guard FileManager.default.fileExists(atPath: modelPath) else {
+    var isDir: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: modelDirPath, isDirectory: &isDir),
+          isDir.boolValue else {
       return nil
     }
 
     do {
-      let url = URL(fileURLWithPath: modelPath)
+      let url = URL(fileURLWithPath: modelDirPath)
       let config = MLModelConfiguration()
       // Prefer Apple Neural Engine for M-series Macs; CPU fallback
       config.computeUnits = .cpuAndNeuralEngine
       config.allowLowPrecisionAccumulationOnGPU = false
 
       let model = try MLModel(contentsOf: url, configuration: config)
-      ErrorHandler.logInfo("Loaded CoreML model from cache: \(modelPath)")
+      ErrorHandler.logInfo("Loaded CoreML model from cache: \(modelDirPath)")
       return model
     } catch {
       ErrorHandler.logInfo("Failed to load cached model: \(error)")
@@ -119,25 +135,70 @@ actor EmbeddingModel {
           continue
         }
 
-        // Verify SHA256
+        // Verify SHA256 of the tarball before extraction. The tarball SHA256
+        // covers both the .mlmodelc directory and vocab.txt atomically, so
+        // there's no separate vocab integrity check needed downstream.
         let digest = SHA256.hash(data: data)
         let computedHash = digest.map { String(format: "%02x", $0) }.joined()
 
         guard computedHash == expectedHash else {
           ErrorHandler.logInfo("Model SHA256 mismatch: expected \(expectedHash), got \(computedHash)")
-          // Delete corrupted cache
-          try? FileManager.default.removeItem(atPath: modelCachePath)
           continue
         }
 
-        // Atomic write: download to .tmp, verify, then rename
-        let tmpPath = "\(modelCachePath)/minilm-l6-v2-\(modelVersion).mlmodelc.tmp"
-        let finalPath = "\(modelCachePath)/minilm-l6-v2-\(modelVersion).mlmodelc"
+        // S3 ships .tar.gz; .mlmodelc is a directory. Save tarball to disk
+        // then shell out to /usr/bin/tar to extract into the cache dir.
+        // After extraction the cache dir contains both the .mlmodelc dir
+        // and the matching vocab.txt produced by build-coreml-model.sh.
+        let tarPath = "\(modelCachePath)/minilm-l6-v2-\(modelVersion).mlmodelc.tar.gz"
 
-        try data.write(to: URL(fileURLWithPath: tmpPath))
-        try FileManager.default.moveItem(atPath: tmpPath, toPath: finalPath)
+        // Clean any prior partial state so extraction starts fresh.
+        try? FileManager.default.removeItem(atPath: tarPath)
+        try? FileManager.default.removeItem(atPath: modelDirPath)
+        try? FileManager.default.removeItem(atPath: vocabPath)
 
-        ErrorHandler.logInfo("Downloaded model from S3 (attempt \(attempt + 1))")
+        do {
+          try data.write(to: URL(fileURLWithPath: tarPath))
+        } catch {
+          ErrorHandler.logInfo("Failed to write tarball to disk: \(error)")
+          continue
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
+        process.arguments = ["-xzf", tarPath, "-C", modelCachePath]
+        do {
+          try process.run()
+        } catch {
+          ErrorHandler.logInfo("tar launch failed: \(error)")
+          try? FileManager.default.removeItem(atPath: tarPath)
+          continue
+        }
+        process.waitUntilExit()
+
+        // Tarball is no longer needed once extracted — remove either way so
+        // the cache dir doesn't accumulate copies across version bumps.
+        try? FileManager.default.removeItem(atPath: tarPath)
+
+        guard process.terminationStatus == 0 else {
+          ErrorHandler.logInfo("tar extraction failed: status \(process.terminationStatus)")
+          try? FileManager.default.removeItem(atPath: modelDirPath)
+          try? FileManager.default.removeItem(atPath: vocabPath)
+          continue
+        }
+
+        // Verify both expected artifacts landed where the loader + tokenizer
+        // expect them. A tarball that extracted but lacks either file is a
+        // packaging bug, not a transient failure — skip the retry loop.
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: modelDirPath, isDirectory: &isDir),
+              isDir.boolValue,
+              FileManager.default.fileExists(atPath: vocabPath) else {
+          ErrorHandler.logInfo("Tarball missing expected contents (model dir or vocab.txt)")
+          continue
+        }
+
+        ErrorHandler.logInfo("Downloaded + extracted model from S3 (attempt \(attempt + 1))")
         return true
       } catch URLError.timedOut {
         ErrorHandler.logInfo("Model download timeout (attempt \(attempt + 1))")
