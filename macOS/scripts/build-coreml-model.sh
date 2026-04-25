@@ -166,6 +166,16 @@ ml_model = ct.convert(
     inputs=[ct.TensorType(shape=(1, 128), dtype=np.int32, name='input_ids')],
     outputs=[ct.TensorType(name='embeddings')],
 )
+
+# coremltools auto-stamps userDefinedMetadata with
+# {source_dialect, source, version} on convert. The dict iteration order
+# at serialization time is not deterministic, so the embedded protobuf
+# bytes (and the tarball SHA256) vary across runs even with identical
+# inputs. These keys are analytics/debugging hints, not used for
+# inference — clear them so the .mlpackage is byte-stable.
+for key in list(ml_model.user_defined_metadata.keys()):
+    del ml_model.user_defined_metadata[key]
+
 ml_model.save('${MLMODEL}')
 print('[build] saved ${MLMODEL}')
 
