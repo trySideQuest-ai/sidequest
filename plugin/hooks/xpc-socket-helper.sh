@@ -3,7 +3,7 @@
 # SideQuest IPC Socket Helper
 # Sends quest data to native app via Unix domain socket
 # Called by: plugin/hooks/stop-hook
-# Args: quest_id tracking_id display_text subtitle tracking_url [reward_amount] [brand_name] [category]
+# Args: quest_id tracking_id display_text subtitle tracking_url [reward_amount] [brand_name] [category] [user_msg] [asst_msg]
 # Exit: Always 0 (silent failure on any error)
 
 QUEST_ID="$1"
@@ -14,6 +14,8 @@ TRACKING_URL="$5"
 REWARD_AMOUNT="${6:-250}"
 BRAND_NAME="${7:-Unknown}"
 CATEGORY="${8:-DevTool}"
+USER_MSG="${9:-}"
+ASST_MSG="${10:-}"
 SOCKET_PATH="$HOME/.sidequest/sidequest.sock"
 
 # Validate required arguments
@@ -39,7 +41,9 @@ payload = json.dumps({
     'tracking_url': sys.argv[5],
     'reward_amount': int(sys.argv[6]),
     'brand_name': sys.argv[7],
-    'category': sys.argv[8]
+    'category': sys.argv[8],
+    'user_msg': sys.argv[9] if len(sys.argv) > 9 else '',
+    'asst_msg': sys.argv[10] if len(sys.argv) > 10 else ''
 }).encode()
 
 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)

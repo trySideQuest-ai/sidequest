@@ -286,6 +286,71 @@ if [ "$DAILY_QUEST_COUNT" -ge "$RC_DAILY_CAP" ]; then
 fi
 
 # ============================================================================
+# PHASE 4.9: Extract last user and assistant messages for embedding inference
+# Reads Claude CLI session state (.jsonl) to get message context for tokenization
+# Messages truncated to 500 chars each; passed to native app for ANE inference
+# ============================================================================
+
+LAST_MESSAGES='{"user_msg":"","asst_msg":""}'
+
+LAST_MESSAGES=$(python3 -c "
+import json, os, sys
+from pathlib import Path
+
+cwd = os.getcwd()
+projects_dir = os.path.expanduser(f'~/.claude/projects/{os.path.abspath(cwd).replace(\"/\", \"-\")}')
+
+# Find latest .jsonl
+if os.path.isdir(projects_dir):
+  try:
+    jsonl_files = [f for f in os.listdir(projects_dir) if f.endswith('.jsonl')]
+    if jsonl_files:
+      jsonl_files.sort(key=lambda f: os.path.getmtime(os.path.join(projects_dir, f)), reverse=True)
+      latest_jsonl = os.path.join(projects_dir, jsonl_files[0])
+
+      user_msg = ''
+      asst_msg = ''
+
+      # Read .jsonl and extract last user + asst messages
+      try:
+        with open(latest_jsonl) as f:
+          for line in f:
+            try:
+              obj = json.loads(line.strip())
+              kind = obj.get('type')
+              if kind in ('user', 'assistant'):
+                msg = obj.get('message', {})
+                content = msg.get('content')
+
+                # Extract text from content (string or list of parts)
+                text = ''
+                if isinstance(content, str):
+                  text = content
+                elif isinstance(content, list):
+                  text = ' '.join(p.get('text', '') for p in content if isinstance(p, dict) and p.get('type') == 'text')
+
+                if text:
+                  # Truncate to 500 chars
+                  text = text[:500]
+                  if kind == 'user':
+                    user_msg = text
+                  else:
+                    asst_msg = text
+            except json.JSONDecodeError:
+              pass
+      except (IOError, PermissionError):
+        pass
+
+      print(json.dumps({'user_msg': user_msg, 'asst_msg': asst_msg}))
+    else:
+      print(json.dumps({'user_msg': '', 'asst_msg': ''}))
+  except OSError:
+    print(json.dumps({'user_msg': '', 'asst_msg': ''}))
+else:
+  print(json.dumps({'user_msg': '', 'asst_msg': ''}))
+" 2>/dev/null) || LAST_MESSAGES='{"user_msg":"","asst_msg":""}'
+
+# ============================================================================
 # PHASE 5: Deep context extraction (v1.7 data-driven pipeline)
 # Reads all 4 sources: conversation, diff content, git metadata, config cache
 # Patterns, weights, and domains are data in config/*.json — not code
@@ -396,11 +461,18 @@ if [ -z "$DISPLAY_TEXT" ] || [ -z "$TRACKING_URL" ]; then
 fi
 
 # ============================================================================
+# PHASE 7.5: Extract user and assistant messages from LAST_MESSAGES JSON
+# ============================================================================
+
+USER_MSG=$(echo "$LAST_MESSAGES" | python3 -c "import json, sys; obj = json.load(sys.stdin); print(obj.get('user_msg', ''))" 2>/dev/null) || USER_MSG=""
+ASST_MSG=$(echo "$LAST_MESSAGES" | python3 -c "import json, sys; obj = json.load(sys.stdin); print(obj.get('asst_msg', ''))" 2>/dev/null) || ASST_MSG=""
+
+# ============================================================================
 # PHASE 8: Send quest via IPC socket to native app
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-"${SCRIPT_DIR}/xpc-socket-helper.sh" "$QUEST_ID" "$QUEST_ID" "$DISPLAY_TEXT" "$SUBTITLE" "$TRACKING_URL" "${REWARD_AMOUNT:-250}" "${BRAND_NAME:-Unknown}" "${CATEGORY:-DevTool}" 2>/dev/null || {
+"${SCRIPT_DIR}/xpc-socket-helper.sh" "$QUEST_ID" "$QUEST_ID" "$DISPLAY_TEXT" "$SUBTITLE" "$TRACKING_URL" "${REWARD_AMOUNT:-250}" "${BRAND_NAME:-Unknown}" "${CATEGORY:-DevTool}" "$USER_MSG" "$ASST_MSG" 2>/dev/null || {
   log_error "Socket send failed for quest: $QUEST_ID"
   exit 0
 }
