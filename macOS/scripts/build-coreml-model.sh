@@ -105,6 +105,7 @@ echo "[build] step 2: trace PyTorch graph + convert to CoreML, emit vocab"
 python3 - <<PYTHON
 import os
 import shutil
+import numpy as np
 import torch
 import coremltools as ct
 from sentence_transformers import SentenceTransformer
@@ -130,7 +131,7 @@ ml_model = ct.convert(
     traced,
     convert_to='mlprogram',
     compute_units=ct.ComputeUnit.CPU_AND_NE,
-    inputs=[ct.TensorType(shape=(1, 128), dtype=torch.int32, name='input_ids')],
+    inputs=[ct.TensorType(shape=(1, 128), dtype=np.int32, name='input_ids')],
     outputs=[ct.TensorType(name='embeddings')],
 )
 ml_model.save('${MLMODEL}')
