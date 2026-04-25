@@ -203,7 +203,17 @@ xcrun coremlcompiler compile "${MLMODEL}" .
 }
 
 echo "[build] step 4: deterministic tar (sort=name, mtime=${TAR_MTIME}, owner=0)"
-tar --sort=name \
+# macOS BSD tar lacks --sort=name; require GNU tar (gtar on Mac via
+# `brew install gnu-tar`, plain tar on Linux CI).
+if command -v gtar >/dev/null 2>&1; then
+  TAR_BIN=gtar
+elif tar --version 2>/dev/null | grep -q "GNU tar"; then
+  TAR_BIN=tar
+else
+  echo "[build] ERROR: GNU tar not found. Install with: brew install gnu-tar" >&2
+  exit 1
+fi
+"${TAR_BIN}" --sort=name \
     --mtime="${TAR_MTIME}" \
     --owner=0 --group=0 \
     --numeric-owner \
