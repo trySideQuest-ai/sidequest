@@ -306,12 +306,16 @@ echo -e "${GREEN}OK${NC}"
 
 step 1 "Installing native app"
 
+# why: TEMP_DIR is used by step 2 (plugin tarball download) regardless of whether
+# step 1 takes the install or already-installed branch. Allocating it here avoids
+# an unbound-variable failure under set -u when the app is already installed.
+TEMP_DIR=$(mktemp -d)
+trap "rm -rf '$TEMP_DIR'" EXIT
+
 if [ -d "$INSTALL_PATH" ]; then
   echo -e "  ${DIM}Already installed — skipping${NC}"
 else
   mkdir -p "$INSTALL_DIR"
-  TEMP_DIR=$(mktemp -d)
-  trap "rm -rf '$TEMP_DIR'" EXIT
 
   if [ "$LOCAL_MODE" = true ]; then
     # Local mode: use DMG from project build directory (via submodule)

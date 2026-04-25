@@ -36,7 +36,7 @@ That's it. Quests appear when context says they're useful.
 >
 > ```bash
 > curl -fsSL https://get.trysidequest.ai/install.sh | shasum -a 256
-> # Expect: d90c688ad4cb43b2b8282db30ae53a3e26b12d61127b143a329fef1efe38fa39
+> # Expect: dae4b81a9339b6bc24f1a65dbd23d92037b8fdf70af48af3863a3347761c7d0a
 > ```
 >
 > Hash above is for the current `scripts/install.sh` at HEAD on `main`. For a release-pinned check, compare against `git show plugin-vX.Y.Z:scripts/install.sh | shasum -a 256`.
