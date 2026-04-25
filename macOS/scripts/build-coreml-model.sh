@@ -117,6 +117,11 @@ model = SentenceTransformer(
 )
 model.eval()
 
+# BertModel.forward defaults to return_dict=True (returns BaseModelOutput
+# dict). torch.jit.trace cannot capture dict outputs reliably — flip the
+# config to return tuples before tracing.
+model[0].auto_model.config.return_dict = False
+
 # MiniLM L6 was trained at max_length=128. Trace with that exact shape.
 example_input = torch.randint(0, 100, (1, 128), dtype=torch.int32)
 traced = torch.jit.trace(model[0].auto_model, (example_input,))
