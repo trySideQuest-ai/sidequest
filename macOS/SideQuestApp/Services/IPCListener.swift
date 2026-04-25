@@ -5,6 +5,7 @@ class IPCListener {
     private var isRunning = false
     private var listenThread: Thread?
     private let socketPath: String
+    private var embeddingService: EmbeddingService?
     var onTriggerReceived: ((String, String) -> Void)?
     var onQuestReceived: ((QuestData) -> Void)?
 
@@ -17,6 +18,10 @@ class IPCListener {
         }
 
         self.socketPath = sideQuestDir.appendingPathComponent("sidequest.sock").path
+    }
+
+    func setEmbeddingService(_ service: EmbeddingService) {
+        self.embeddingService = service
     }
 
     func startListening() throws {
@@ -110,15 +115,32 @@ class IPCListener {
                 continue
             }
 
-            // Read data from client (max 1024 bytes, fire-and-forget)
-            var buffer = [UInt8](repeating: 0, count: 1024)
+            // Read data from client (max 4KB for embedding requests)
+            var buffer = [UInt8](repeating: 0, count: 4096)
             let bytesRead = read(clientFD, &buffer, buffer.count)
-            close(clientFD)
 
             if bytesRead > 0 {
                 let data = Data(buffer[0..<bytesRead])
-                processReceivedData(data)
+                // Process request and get response
+                if let response = processReceivedDataWithResponse(data) {
+                    // Send response back via socket
+                    do {
+                        let responseData = try JSONSerialization.data(withJSONObject: response)
+                        var sentBytes = 0
+                        while sentBytes < responseData.count {
+                            let n = responseData.withUnsafeBytes { ptr in
+                                write(clientFD, ptr.baseAddress! + sentBytes, responseData.count - sentBytes)
+                            }
+                            if n <= 0 { break }
+                            sentBytes += Int(n)
+                        }
+                    } catch {
+                        ErrorHandler.logInfo("IPC response send failed: \(error)")
+                    }
+                }
             }
+
+            close(clientFD)
         }
     }
 
@@ -159,5 +181,85 @@ class IPCListener {
         } catch {
             ErrorHandler.logInfo("IPC JSON parse failed: \(error.localizedDescription)")
         }
+    }
+
+    /// Process embedding request and return response with vectors.
+    /// Runs embedding inference if service available, returns null vectors on timeout/error.
+    private func processReceivedDataWithResponse(_ data: Data) -> [String: Any]? {
+        do {
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return nil
+            }
+
+            // Check if this is an embedding request (has user_msg or asst_msg)
+            let userMsg = (json["user_msg"] as? String) ?? ""
+            let asst_msg = (json["asst_msg"] as? String) ?? ""
+
+            if !userMsg.isEmpty || !asst_msg.isEmpty {
+                // This is an embedding request
+                return handleEmbeddingRequest(userMsg: userMsg, asst_msg: asst_msg)
+            } else {
+                // This is a quest trigger/data request — process separately
+                processReceivedData(data)
+                return nil
+            }
+        } catch {
+            ErrorHandler.logInfo("IPC JSON parse failed: \(error)")
+            return nil
+        }
+    }
+
+    /// Handle embedding request: tokenize + infer + return vectors or null on timeout.
+    private func handleEmbeddingRequest(userMsg: String, asst_msg: String) -> [String: Any] {
+        let startTime = Date()
+
+        // Default response: null vectors (graceful degradation)
+        var response: [String: Any] = [
+            "user_vec": NSNull(),
+            "asst_vec": NSNull(),
+            "inference_ms": 0,
+        ]
+
+        guard let service = embeddingService else {
+            ErrorHandler.logInfo("EmbeddingService not initialized")
+            return response
+        }
+
+        // Run embeddings on background queue with timeout
+        let group = DispatchGroup()
+        var userVec: [Float]?
+        var asst_vec: [Float]?
+
+        // Embed user message
+        group.enter()
+        Task {
+            userVec = await service.embedText(userMsg)
+            group.leave()
+        }
+
+        // Embed assistant message
+        group.enter()
+        Task {
+            asst_vec = await service.embedText(asst_msg)
+            group.leave()
+        }
+
+        // Wait up to 1100ms for both (buffer beyond 1000ms timeout)
+        let waitResult = group.wait(timeout: .now() + 1.1)
+        let elapsed = Int(Date().timeIntervalSince(startTime) * 1000)
+
+        if waitResult == .timedOut {
+            ErrorHandler.logInfo("Embedding inference timeout after \(elapsed)ms")
+        } else {
+            if let vec = userVec, vec.count == 384 {
+                response["user_vec"] = vec
+            }
+            if let vec = asst_vec, vec.count == 384 {
+                response["asst_vec"] = vec
+            }
+        }
+
+        response["inference_ms"] = elapsed
+        return response
     }
 }
