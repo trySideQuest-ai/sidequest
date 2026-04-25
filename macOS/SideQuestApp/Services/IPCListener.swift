@@ -225,41 +225,55 @@ class IPCListener {
             return response
         }
 
-        // Run embeddings on background queue with timeout
-        let group = DispatchGroup()
-        var userVec: [Float]?
-        var asst_vec: [Float]?
+        // Bridge sync IPC to async embedding via lock-protected box (Swift Sendable rules
+        // forbid mutating captured vars from concurrent Tasks).
+        let box = EmbeddingResultBox()
+        let semaphore = DispatchSemaphore(value: 0)
 
-        // Embed user message
-        group.enter()
         Task {
-            userVec = await service.embedText(userMsg)
-            group.leave()
-        }
-
-        // Embed assistant message
-        group.enter()
-        Task {
-            asst_vec = await service.embedText(asst_msg)
-            group.leave()
+            async let userVec = service.embedText(userMsg)
+            async let asstVec = service.embedText(asst_msg)
+            let (u, a) = await (userVec, asstVec)
+            box.set(user: u, asst: a)
+            semaphore.signal()
         }
 
         // Wait up to 1100ms for both (buffer beyond 1000ms timeout)
-        let waitResult = group.wait(timeout: .now() + 1.1)
+        let waitResult = semaphore.wait(timeout: .now() + 1.1)
         let elapsed = Int(Date().timeIntervalSince(startTime) * 1000)
 
         if waitResult == .timedOut {
             ErrorHandler.logInfo("Embedding inference timeout after \(elapsed)ms")
         } else {
+            let (userVec, asstVec) = box.get()
             if let vec = userVec, vec.count == 384 {
                 response["user_vec"] = vec
             }
-            if let vec = asst_vec, vec.count == 384 {
+            if let vec = asstVec, vec.count == 384 {
                 response["asst_vec"] = vec
             }
         }
 
         response["inference_ms"] = elapsed
         return response
+    }
+}
+
+private final class EmbeddingResultBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var userVec: [Float]?
+    private var asstVec: [Float]?
+
+    func set(user: [Float]?, asst: [Float]?) {
+        lock.lock()
+        defer { lock.unlock() }
+        userVec = user
+        asstVec = asst
+    }
+
+    func get() -> ([Float]?, [Float]?) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (userVec, asstVec)
     }
 }
