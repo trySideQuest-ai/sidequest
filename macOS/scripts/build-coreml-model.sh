@@ -37,7 +37,7 @@ set -euo pipefail
 # --- Pinned versions ---------------------------------------------------------
 
 MODEL_VERSION="2.1.0"
-MINILM_REVISION="4cf3a8abf5ff137f67f89a0d176bfbea6112ff53"
+MINILM_REVISION="c9745ed1d9f207416be6d2e6f8de32d1f16199bf"
 
 # Output names — versioned so the app can resolve which artifact to load
 # from a known cache path.
