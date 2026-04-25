@@ -123,9 +123,41 @@ model.eval()
 # config to return tuples before tracing.
 model[0].auto_model.config.return_dict = False
 
+
+# Wrap the BertModel so the traced graph emits a single 384-dim sentence
+# embedding tensor named "embeddings", matching the server-side
+# @xenova/transformers feature-extraction pipeline (mean pool over tokens
+# with attention mask + L2 normalize). Without this wrapper, BertModel
+# returns 2 tensors (last_hidden_state, pooler_output) and ct.convert
+# rejects the single-output declaration. Mean pool is what
+# sentence-transformers ships as the canonical pooling for MiniLM L6 v2 —
+# CLS pooler_output is not used downstream.
+class MeanPoolWrapper(torch.nn.Module):
+    def __init__(self, bert):
+        super().__init__()
+        self.bert = bert
+
+    def forward(self, input_ids):
+        # Treat any non-zero token id as real (pad token id = 0 for BERT
+        # WordPiece). Matches the WordPieceTokenizer pad behavior on the
+        # client side.
+        attention_mask = (input_ids != 0).to(torch.float32)
+        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        last_hidden_state = outputs[0]
+        mask = attention_mask.unsqueeze(-1)
+        summed = (last_hidden_state * mask).sum(dim=1)
+        counts = mask.sum(dim=1).clamp(min=1e-9)
+        pooled = summed / counts
+        normalized = torch.nn.functional.normalize(pooled, p=2, dim=1)
+        return normalized
+
+
+wrapped = MeanPoolWrapper(model[0].auto_model)
+wrapped.eval()
+
 # MiniLM L6 was trained at max_length=128. Trace with that exact shape.
 example_input = torch.randint(0, 100, (1, 128), dtype=torch.int32)
-traced = torch.jit.trace(model[0].auto_model, (example_input,))
+traced = torch.jit.trace(wrapped, (example_input,))
 
 ml_model = ct.convert(
     traced,
