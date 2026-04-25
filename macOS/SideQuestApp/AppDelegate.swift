@@ -62,7 +62,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if bearerToken.isEmpty {
-            ErrorHandler.logInfo("No auth token found. Run the SideQuest setup command or /sidequest:login to authenticate.")
+            ErrorHandler.logInfo("No auth token found. Run the SideQuest setup command or /sidequest:sq-login to authenticate.")
         }
 
         // Load bundled fonts for the fantasy card renderer

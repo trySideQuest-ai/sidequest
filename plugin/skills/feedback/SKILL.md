@@ -1,23 +1,12 @@
 ---
 name: feedback
-description: Share feedback about the SideQuest quest experience
+description: "Deprecated alias for /sidequest:sq-feedback. Forwards to the new name."
 ---
 
-# SideQuest Feedback
+# /sidequest:feedback (alias)
 
-Ask the user what feedback they'd like to share about the quest experience, then send it to the server.
+This command has moved to `/sidequest:sq-feedback` for naming clarity. Run `/sidequest:sq-feedback` instead.
 
-1. Ask: "What feedback would you like to share about the quest experience?"
-2. Read the auth token from `${CLAUDE_PLUGIN_DATA}/config.json`
-3. Send the feedback using Bash:
+The new name is unique-by-design so it never collides with same-named commands in other Claude Code plugins. The old alias remains for muscle memory and will be removed in a future release.
 
-```bash
-curl -s -X POST https://api.trysidequest.ai/feedback \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"text": "<USER_FEEDBACK>"}'
-```
-
-4. Report success or failure to the user.
-
-If no token exists, tell the user to run `/sidequest:login` first.
+See https://github.com/tomer-shavit/sidequest for the full skill list.

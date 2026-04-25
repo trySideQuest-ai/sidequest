@@ -1,20 +1,12 @@
 ---
 name: login
-description: Authenticate with SideQuest using Google OAuth
+description: "Deprecated alias for /sidequest:sq-login. Forwards to the new name."
 ---
 
-# SideQuest Login
+# /sidequest:login (alias)
 
-Run the OAuth login script to authenticate with Google:
+This command has moved to `/sidequest:sq-login` for naming clarity. Run `/sidequest:sq-login` instead.
 
-1. Execute the following command using Bash:
+The new name is unique-by-design so it never collides with same-named commands in other Claude Code plugins. The old alias remains for muscle memory and will be removed in a future release.
 
-```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/oauth-login.js"
-```
-
-2. A browser window will open for Google authentication.
-3. After authenticating, the token is saved automatically.
-4. Report the result to the user.
-
-If the script fails, tell the user to check their internet connection and try again.
+See https://github.com/tomer-shavit/sidequest for the full skill list.

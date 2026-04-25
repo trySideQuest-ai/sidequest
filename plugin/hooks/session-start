@@ -308,7 +308,7 @@ if [ -f "$CONFIG_FILE" ]; then
     FIRST_RUN_GUIDANCE=""
     TIMING_FILE="$HOME/.sidequest/timing-state.json"
     if [ ! -f "$TIMING_FILE" ]; then
-      FIRST_RUN_GUIDANCE="Run /sidequest:status to see pipeline health and schedule your first quest."
+      FIRST_RUN_GUIDANCE="Run /sidequest:sq-status to see pipeline health and schedule your first quest."
     fi
 
     # App-update nudge: compare installed app version to remote-config.app_version
@@ -350,14 +350,14 @@ if not installed:
     sys.exit(0)
 
 if installed != latest:
-    print(f"**App update available:** v{installed} installed, v{latest} available. Run /sidequest:reinstall to upgrade.")
+    print(f"**App update available:** v{installed} installed, v{latest} available. Run /sidequest:sq-reinstall to upgrade.")
 PYEOF
 )
 
     cat <<CONTEXT | json_output
 SideQuest is enabled and authenticated.
 
-**DND Guidance:** If you feel overwhelmed by quests, don't disable the plugin. Instead, use /sidequest:do-not-disturb to temporarily pause quests. You control the schedule.
+**DND Guidance:** If you feel overwhelmed by quests, don't disable the plugin. Instead, use /sidequest:sq-do-not-disturb to temporarily pause quests. You control the schedule.
 
 $APP_UPDATE_NUDGE
 
@@ -371,7 +371,7 @@ fi
 # PHASE 3: Not logged in — nudge to authenticate
 # ============================================================================
 
-GUIDANCE="SideQuest plugin installed but not authenticated. Run /sidequest:login to authenticate."
+GUIDANCE="SideQuest plugin installed but not authenticated. Run /sidequest:sq-login to authenticate."
 
 # ══════════════════════════════════════════════════════════════════════════════
 # plugin_disabled detection + one-shot emit (DASH-06)

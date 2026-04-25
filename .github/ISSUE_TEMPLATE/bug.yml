@@ -1,0 +1,69 @@
+name: Bug report
+description: Something broke. Help us fix it.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Run `/sidequest:sq-status` first — its output makes triage 10× faster.
+
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: "14.4 (Sonoma)"
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: "From `cat ~/.claude/plugins/sidequest/plugin/VERSION` or the install path."
+      placeholder: "0.8.0"
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: Native app version
+      description: "From the SideQuest menu-bar icon → About, or `defaults read ~/Applications/SideQuestApp.app/Contents/Info CFBundleShortVersionString`."
+      placeholder: "1.8.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what did you see instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: status-output
+    attributes:
+      label: Output of `/sidequest:sq-status`
+      description: Paste the full output here.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: hook-errors
+    attributes:
+      label: Recent hook errors
+      description: "`tail -50 ~/.sidequest/hook-errors.log` — paste here if non-empty."
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Logs, screenshots, video — drag and drop into this field.
+    validations:
+      required: false

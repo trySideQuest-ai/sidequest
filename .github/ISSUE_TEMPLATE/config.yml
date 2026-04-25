@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Quest relevance feedback
+    url: "https://github.com/tomer-shavit/sidequest"
+    about: "Use /sidequest:sq-feedback inside Claude Code for fastest routing of relevance feedback."
+  - name: Security disclosures
+    url: "https://github.com/tomer-shavit/sidequest/blob/main/SECURITY.md"
+    about: "Please email 71125175+tomer-shavit@users.noreply.github.com for security issues. Do not file a public issue."

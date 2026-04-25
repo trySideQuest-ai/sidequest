@@ -1,285 +1,124 @@
-# SideQuest Plugin for Claude Code
+# SideQuest Plugin (Contributor Reference)
 
-Earn money by engaging with contextual quests while you code. SideQuest displays brief, non-intrusive promotional prompts at strategic moments in your workflow — typically after you finish a response in Claude. Each quest you open earns 2.5 NIS, and your earnings are tracked in real-time.
+Internal docs for the plugin. End users should read the [top-level README](../README.md).
 
-## Quick Start
+## What this is
 
-```bash
-curl -fsSL https://get.trysidequest.ai/install.sh | bash
-```
-
-Then authenticate:
-```
-/sidequest:login
-```
-
-The native SideQuest app will auto-launch and run in your menu bar. Quests appear as macOS notifications after you finish Claude responses or after gaps in activity.
+A Claude Code plugin (`stop-hook` + `session-start` hooks plus skills) that ships local context to the SideQuest API and forwards selected quests to the native macOS app over a Unix socket.
 
 ## Dependencies
 
 | Dependency | Required Version | Purpose |
-|-----------|-----------------|---------|
+|---|---|---|
 | python3 | 3.8+ | JSON parsing, context extraction, atomic file I/O |
 | curl | any | API communication |
 | Node.js | 20+ | OAuth login flow |
 | git | any | Commit detection, diff-based context extraction |
-| nc (netcat) | any (ships with macOS) | IPC socket health check |
+| nc (netcat) | any (macOS built-in) | IPC socket health check |
 | macOS | 13.0+ (Ventura) | Required for SMAppService and native app |
 
-## Skills Reference
+## Skills
 
-All developer-facing features are available as skills:
+Source under `plugin/skills/`. Each skill is a directory with a `SKILL.md` (frontmatter + body). Skills with the `sq-` prefix are canonical; bare names are alias stubs that forward to their `sq-<name>` counterpart for muscle-memory backwards compatibility.
 
-### `/sidequest:login`
-Authenticate with Google. Run this to set up your account or re-authenticate if you see auth errors.
+| Canonical skill | Forwards from | What it does |
+|---|---|---|
+| `sq-login` | `login` | OAuth via Google, writes the token to `~/.sidequest/config.json` |
+| `sq-status` | `status`, `check` | Diagnostic — auth, app, API, timing, DND |
+| `sq-settings` | `settings` | Plugin on/off toggle |
+| `sq-do-not-disturb` | `do-not-disturb` | 2-hour pause |
+| `sq-retrigger` | `retrigger` | Re-show last quest |
+| `sq-feedback` | `feedback` | Send feedback |
+| `sq-reinstall` | `reinstall` | Pull latest plugin + app from remote-config.json |
+| `sq-uninstall` | `uninstall` | Wipe everything |
 
-### `/sidequest:settings`
-Enable or disable the plugin permanently. Says "disable" to turn off, "enable" to turn back on.
+## Quest triggers + frequency
 
-### `/sidequest:do-not-disturb`
-Toggle Do Not Disturb mode. Run once to pause quests, run again to resume.
-
-**Note:** This skill is automatically invoked when you express frustration about quests (e.g., "please pause" or "I'm annoyed").
-
-### `/sidequest:earnings`
-Check your earnings dashboard. Shows the number of quests you've opened and your total NIS earnings (2.5 NIS per quest).
-
-### `/sidequest:status`
-Run a comprehensive health check. Shows:
-- Auth status (token present?)
-- Native app running status
-- API connectivity
-- Timing state (daily quest count, last quest timestamp, cooldown status)
-- DND status
-
-**Run this first when something isn't working.**
-
-### `/sidequest:retrigger`
-Show the last quest notification again. Useful for testing or if you accidentally dismissed it.
-
-### `/sidequest:feedback`
-Send feedback to the SideQuest team about your experience.
-
-## How It Works
-
-### Quest Display Triggers
 Quests appear in two scenarios:
 
-1. **After Claude response** — When you submit a prompt and Claude finishes generating a response, the stop hook fires and checks if it's time to show a quest.
-2. **After inactivity** — If you've been idle in Claude for 10 minutes, a quest can be shown on next interaction.
+1. **After a Claude response** — the stop-hook fires and decides whether to show a quest.
+2. **After inactivity** — if you've been idle in Claude for 10 minutes, a quest can be shown on next interaction.
 
-### Timing & Frequency Rules
-- **Maximum 5 quests per day** — Daily counter resets at midnight.
-- **Minimum 20 minutes between quests** — Cooldown prevents quest fatigue.
-- **Interaction-based frequency** — Quests show after every 10 interactions (by default; configurable).
-- **Do Not Disturb respected** — If you run `/sidequest:do-not-disturb`, quests won't appear until you toggle it off.
+Hard caps:
 
-### Context Extraction
-When a quest is selected, the plugin extracts two layers of context to choose relevant promotional content:
+- **Max 5 quests/day** — counter resets at midnight (local time).
+- **Min 20 minutes between quests** — cooldown prevents fatigue.
+- **Interaction-based frequency** — by default, every 10 interactions; configurable.
+- **Do Not Disturb** — `/sidequest:sq-do-not-disturb` pauses for 2 hours.
 
-1. **Static context** — Your project's tech stack from `CLAUDE.md` and `package.json`
-2. **Dynamic context** — Recent git commit message and file changes (diff)
+## Context extraction
 
-This context is used to match quests to your work but is **never sent to the server** — all matching happens locally.
+When a quest is selected, the plugin extracts two layers of context:
 
-## Troubleshooting
+1. **Static context** — tech stack from `CLAUDE.md` and `package.json`.
+2. **Dynamic context** — recent git commit message and changed-file paths.
 
-### No quests appearing
+Both layers are mapped to anonymous tag IDs locally. **The source strings never leave your machine.** Only the tag IDs travel to the API.
 
-1. **Check if the native app is running**
+## Local files
+
+- `~/.sidequest/config.json` — auth token, settings, DND flag
+- `~/.sidequest/timing-state.json` — daily counter, cooldown, last-shown timestamp
+- `~/.sidequest/tech-context.json` — cached anonymized tag IDs
+- `~/.sidequest/sidequest.sock` — Unix socket (plugin ↔ native app)
+- `~/.sidequest/last-quest.json` — last quest shown (for `sq-retrigger`)
+- `~/.sidequest/hook-errors.log` — diagnostic log (auto-truncated at 100KB)
+
+## Troubleshooting (beyond `/sidequest:sq-status`)
+
+`/sidequest:sq-status` covers auth, app, API, and timing diagnostics. The cases below are not yet automated:
+
+### Gatekeeper blocks the app
+
+macOS may block the unsigned third-party app on first launch. Three options:
+
+1. **Allow via System Settings.** Open System Settings → Privacy & Security → scroll to "SideQuestApp was blocked" → "Open Anyway".
+2. **Remove the quarantine attribute:**
    ```bash
-   pgrep -x SideQuestApp
+   xattr -cr ~/Applications/SideQuestApp.app
    ```
-   If nothing prints, the app is not running. Look for the SideQuest icon in your menu bar (top-right corner).
+3. (Not recommended.) Disable Gatekeeper globally: `sudo spctl --master-disable`.
 
-2. **Check socket health** (verifies app-to-plugin communication)
-   ```bash
-   echo "" | nc -U -w1 ~/.sidequest/sidequest.sock
-   ```
-   If this fails, the app is not listening on the socket.
+### Auto-launch fails (app does not start at login)
 
-3. **Check timing state**
-   ```bash
-   cat ~/.sidequest/timing-state.json
-   ```
-   Verify:
-   - `daily_quest_count` is less than 5
-   - `last_quest_shown_at` is more than 20 minutes ago
-   - `daily_reset_date` is today
+If the app does not start when you log in to macOS:
 
-4. **Check if Do Not Disturb is active**
-   ```bash
-   cat ~/.sidequest/config.json | python3 -m json.tool | grep do_not_disturb
-   ```
-   If `do_not_disturb` is `true`, quests are paused.
-
-5. **Review the error log**
-   ```bash
-   cat ~/.sidequest/hook-errors.log
-   ```
-   Common errors:
-   - `socket connection failed` — App not running
-   - `config parse error` — Corrupted `config.json`
-   - `API request failed` — Network issue or API down
-
-6. **Run the diagnostics skill**
-   ```
-   /sidequest:status
-   ```
-   This provides a comprehensive health check of all components.
-
-### Auth failures
-
-**"Unauthorized" or "invalid token" errors:**
-
-1. Check if your token exists:
-   ```bash
-   python3 -c "import json; print(json.load(open(open('$HOME/.sidequest/config.json')).get('token', 'MISSING')))"
-   ```
-
-2. If token is missing or expired, re-authenticate:
-   ```
-   /sidequest:login
-   ```
-
-### Gatekeeper issues ("App can't be opened" or "unidentified developer")
-
-macOS blocks unsigned third-party apps. Solutions:
-
-**Option 1: Allow via System Settings (easiest)**
-1. Open System Settings > Privacy & Security
-2. Scroll down to find "SideQuestApp was blocked"
-3. Click "Open Anyway"
-
-**Option 2: Remove quarantine attribute**
-```bash
-xattr -cr ~/Applications/SideQuestApp.app
-```
-
-**Option 3: Allow all unsigned apps (not recommended for security)**
-```bash
-sudo spctl --master-disable
-```
-
-### SMAppService auto-launch failures (app doesn't start at login)
-
-If the app doesn't automatically launch when you log in to macOS:
-
-1. Open System Settings > General > Login Items
-2. Look for "SideQuestApp" in the "Allow in the Login Items" list
-3. If missing, click the "+" button and select `~/Applications/SideQuestApp.app`
-4. The app should now auto-launch on next login
-
-The launchd plist at `~/Library/LaunchAgents/ai.sidequest.app.plist` handles KeepAlive, so the app will restart if it crashes.
+1. System Settings → General → Login Items → look for `SideQuestApp` in the "Allow in the Login Items" list.
+2. If missing, click `+` and select `~/Applications/SideQuestApp.app`.
+3. The launchd plist at `~/Library/LaunchAgents/ai.sidequest.app.plist` handles KeepAlive — the app restarts on crash.
 
 ### Hook errors log
 
-Location: `~/.sidequest/hook-errors.log`
+`~/.sidequest/hook-errors.log` captures config parse errors, API failures, socket failures, and timing-state errors. Auto-truncated at 100KB. To inspect recent issues:
 
-This log captures:
-- Config parse errors
-- API request failures
-- Socket connection failures
-- Timing state errors
-- Other runtime issues
-
-The log is automatically truncated at 100KB to prevent disk bloat.
-
-**View recent errors:**
 ```bash
 tail -20 ~/.sidequest/hook-errors.log
 ```
 
-## Disable & Uninstall
+## Disable + uninstall
 
-### Pause quests temporarily
+**Pause:** `/sidequest:sq-do-not-disturb`.
 
-Use Do Not Disturb:
-```
-/sidequest:do-not-disturb
-```
+**Disable:** `/sidequest:sq-settings`, then "disable". Sets `"enabled": false` in `~/.sidequest/config.json`. Re-enable the same way.
 
-### Disable permanently (keep plugin installed)
-
-```
-/sidequest:settings
-```
-
-Then say "disable" when prompted.
-
-This sets `"enabled": false` in your config and immediately stops showing quests. You can re-enable anytime with `/sidequest:settings` → "enable".
-
-### Full uninstall (remove everything)
-
+**Full uninstall:**
 ```bash
 curl -fsSL https://get.trysidequest.ai/uninstall.sh | bash
 ```
+Or `/sidequest:sq-uninstall` inside Claude Code.
 
-Or if you have the repo:
+Add `--keep-config` to the uninstall script to preserve the auth token for an easy reinstall.
+
+## Tests
+
 ```bash
-./scripts/uninstall.sh
+cd plugin
+pytest -v
 ```
 
-This removes:
-- The native app (`~/Applications/SideQuestApp.app`)
-- The plugin (from Claude's plugin directory)
-- Launchd plist (`~/Library/LaunchAgents/ai.sidequest.app.plist`)
-- All state files under `~/.sidequest/`
-
-**Preserve your auth token for easy reinstall:**
-```bash
-./scripts/uninstall.sh --keep-config
-```
-
-This keeps `~/.sidequest/config.json` with your auth token, so next install skips the login step.
-
-## Configuration Files
-
-Advanced users can manually edit state files in `~/.sidequest/`:
-
-### `config.json`
-```json
-{
-  "token": "64-char-hex-string",
-  "enabled": true,
-  "api_base": "https://api.trysidequest.ai",
-  "do_not_disturb": false
-}
-```
-
-- `token`: Your auth token (generated via `/sidequest:login`)
-- `enabled`: Master on/off switch
-- `api_base`: API endpoint (usually should not change)
-- `do_not_disturb`: Boolean toggle for Do Not Disturb mode (false if not active)
-
-### `timing-state.json`
-```json
-{
-  "last_hook_fire": 1712960000,
-  "last_quest_shown": 1712959000,
-  "daily_quest_count": 2,
-  "daily_reset_date": "2025-04-12",
-  "interactions_since_last_quest": 5
-}
-```
-
-- `last_hook_fire`: Last time the stop hook was triggered
-- `last_quest_shown`: Last time a quest was displayed
-- `daily_quest_count`: Number of quests shown today
-- `daily_reset_date`: Current date (YYYY-MM-DD) for daily reset logic
-- `interactions_since_last_quest`: Counter for interaction-based frequency
-
-### `tech-context.json` (auto-generated)
-Cached tech stack tags extracted from CLAUDE.md and package.json. Used for context-aware quest matching.
-
-### `last-quest.json` (auto-generated)
-Stores the last quest shown, used by `/sidequest:retrigger`.
-
-### `hook-errors.log`
-Diagnostic log of errors. Manually delete if it grows too large.
-
-## Need Help?
-
-- Run `/sidequest:status` for a full health check
-- Check `~/.sidequest/hook-errors.log` for diagnostic information
-- Run `/sidequest:feedback` to report issues directly to the SideQuest team
+Layout:
+- `tests/test_skill_renames.py` — sq- skill structure + alias stubs
+- `tests/test_extract_context.py` — context extraction logic
+- `tests/test_auto_update.py` — version compare, SHA256 verify, atomic swap
+- `tests/test_remote_config.py` — remote config fetch + cache + fallback
+- `tests/test_plugin_disabled.py` — `plugin_disabled` event one-shot
