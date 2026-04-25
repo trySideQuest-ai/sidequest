@@ -165,6 +165,13 @@ ml_model = ct.convert(
     compute_units=ct.ComputeUnit.CPU_AND_NE,
     inputs=[ct.TensorType(shape=(1, 128), dtype=np.int32, name='input_ids')],
     outputs=[ct.TensorType(name='embeddings')],
+    # ML Program defaults to FP16 weight casting for ANE. Parity testing
+    # showed cosine ~0.42 vs PyTorch reference (target ≥0.99), with
+    # CPU_ONLY inference returning NaN — both signals of FP16 overflow
+    # during the FP32→FP16 conversion of the mean-pool / clamp /
+    # normalize chain. Force FP32 precision: ANE will fall back to CPU
+    # for ops it can't run at FP32, but parity is the gate that matters.
+    compute_precision=ct.precision.FLOAT32,
 )
 
 # coremltools auto-stamps userDefinedMetadata with
