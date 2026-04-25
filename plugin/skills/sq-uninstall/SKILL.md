@@ -3,7 +3,7 @@ name: sq-uninstall
 description: "Fully remove SideQuest from this machine. Deletes the native app, plugin, auth token, local config, caches, and launchd agents. Use when the user asks 'uninstall sidequest', 'remove sidequest', 'delete sidequest', 'get rid of sidequest', or 'i don't want this anymore'."
 ---
 
-# /sidequest:uninstall
+# /sidequest:sq-uninstall
 
 Fully removes SideQuest (plugin + native app + local data) from this machine via the hosted uninstall script.
 

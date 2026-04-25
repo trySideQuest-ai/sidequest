@@ -3,7 +3,7 @@ name: sq-settings
 description: "Enable or disable SideQuest quests. Use this when the user says 'turn off quests', 'stop sidequest', 'enable sidequest', 'disable the plugin', 'turn off the plugin', 'disable quests', 'stop showing quests', 'I want to pause quests permanently', 'disable the sidequest plugin', or similar requests to permanently toggle the plugin on/off."
 ---
 
-# /sidequest:settings
+# /sidequest:sq-settings
 
 Enable or disable the SideQuest plugin.
 
@@ -54,10 +54,10 @@ Plugin: <ENABLED or DISABLED>
 
 8. If disabled, add:
    ```
-   Quests are paused. Run /sidequest:settings enable to resume.
+   Quests are paused. Run /sidequest:sq-settings enable to resume.
    ```
 
 ## Error Handling
 
-- If `~/.sidequest/config.json` doesn't exist, tell the user: "SideQuest not configured. Run /sidequest:login first."
-- If JSON parsing fails, tell the user: "Config file is corrupted. Run /sidequest:login to reset."
+- If `~/.sidequest/config.json` doesn't exist, tell the user: "SideQuest not configured. Run /sidequest:sq-login first."
+- If JSON parsing fails, tell the user: "Config file is corrupted. Run /sidequest:sq-login to reset."

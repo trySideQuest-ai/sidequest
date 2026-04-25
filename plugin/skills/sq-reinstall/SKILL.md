@@ -3,7 +3,7 @@ name: sq-reinstall
 description: "Reinstall SideQuest to the latest version. Downloads the latest plugin + native app via the hosted installer and replaces your current installation. Use when the user asks 'update sidequest', 'upgrade sidequest', 'reinstall sidequest', 'get the latest version', or sees an update-available banner at session start."
 ---
 
-# /sidequest:reinstall
+# /sidequest:sq-reinstall
 
 Reinstalls SideQuest (plugin + native app) to the latest version by re-running the hosted installer.
 
@@ -38,11 +38,11 @@ Capture exit status. Installer prints its own progress.
 
 If exit status `0`:
 
-> "✓ Reinstall complete. Run `/sidequest:check` to verify everything is working."
+> "✓ Reinstall complete. Run `/sidequest:sq-status` to verify everything is working."
 
 If non-zero:
 
-> "Reinstall failed (exit code {N}). Run `/sidequest:check` to see which component failed. You can try again by running `/sidequest:reinstall`."
+> "Reinstall failed (exit code {N}). Run `/sidequest:sq-status` to see which component failed. You can try again by running `/sidequest:sq-reinstall`."
 
 ## Error Handling
 

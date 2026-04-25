@@ -96,12 +96,25 @@ def test_retired_earnings_stub():
 
 
 def test_no_new_sq_skill_lists_old_name_in_active_doc():
-    """sq-<x> skill frontmatter name matches directory; body can reference other commands."""
-    for old, new in RENAMES:
+    """sq-<x> skill bodies must not reference old /sidequest:<bare> commands.
+
+    Canonical sq- skills should always steer users to the sq- name, not the
+    deprecated alias — otherwise the LLM follows the old name to the alias
+    stub which then forwards back, an extra hop and a worse experience.
+    """
+    for _old, new in RENAMES:
         body = read_skill_md(new)
-        # Verify frontmatter name is the new name (already checked in test_new_sq_skills_exist_with_correct_name)
-        # This test serves as a placeholder ensuring sq- skills are in place.
-        name = parse_frontmatter_name(body)
-        assert name == new, (
-            f"{new}/SKILL.md name is {name!r}, want {new!r}"
-        )
+        for old_name, _new_name in RENAMES:
+            ref = f"/sidequest:{old_name} "
+            assert ref not in body, (
+                f"{new}/SKILL.md references old command {ref.strip()}; "
+                f"use /sidequest:sq-{old_name} instead"
+            )
+            # Catch line-end occurrences too.
+            for terminator in ("\n", ".", ",", "`", '"', "'", ")"):
+                ref2 = f"/sidequest:{old_name}{terminator}"
+                assert ref2 not in body, (
+                    f"{new}/SKILL.md references old command "
+                    f"/sidequest:{old_name} (followed by {terminator!r}); "
+                    f"use /sidequest:sq-{old_name} instead"
+                )

@@ -20,4 +20,4 @@ curl -s -X POST https://api.trysidequest.ai/feedback \
 
 4. Report success or failure to the user.
 
-If no token exists, tell the user to run `/sidequest:login` first.
+If no token exists, tell the user to run `/sidequest:sq-login` first.

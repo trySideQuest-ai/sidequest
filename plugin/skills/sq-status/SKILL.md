@@ -3,7 +3,7 @@ name: sq-status
 description: "Comprehensive SideQuest health check and diagnostic tool. Use this when the user asks 'is sidequest working', 'why no quests', 'sidequest not working', 'check sidequest', 'debug sidequest', 'sidequest health', 'diagnostics', 'what's wrong', 'not getting quests', 'sidequest status', or when diagnosing any issue with quest delivery."
 ---
 
-# /sidequest:status
+# /sidequest:sq-status
 
 Comprehensive health check for SideQuest.
 
@@ -31,10 +31,10 @@ except:
 ```
 
 - If output is `NO_TOKEN`: Auth status = "Not authenticated"
-  - Add advice: "Run /sidequest:login to authenticate."
+  - Add advice: "Run /sidequest:sq-login to authenticate."
   
 - If output is `NO_CONFIG`: Auth status = "Not configured"
-  - Add advice: "Run /sidequest:login to set up SideQuest."
+  - Add advice: "Run /sidequest:sq-login to set up SideQuest."
   
 - If output is `OK`: Auth status = "Authenticated"
 
@@ -115,7 +115,7 @@ except:
 - If output starts with `ACTIVE:`: Parse the timestamp
   - Convert to human-readable resume time (e.g., "until 5:30 PM today")
   - Display as: "Do Not Disturb active until {time}"
-  - Add: "Run /sidequest:do-not-disturb to cancel early."
+  - Add: "Run /sidequest:sq-do-not-disturb to cancel early."
 
 ### 6. Plugin Enabled/Disabled
 
@@ -135,7 +135,7 @@ except:
 
 - If output is `ENABLED`: Plugin status = "Enabled"
 - If output is `DISABLED`: Plugin status = "Disabled"
-  - Add advice: "Run /sidequest:settings enable to turn on quests."
+  - Add advice: "Run /sidequest:sq-settings enable to turn on quests."
 - If output is `UNKNOWN`: Plugin status = "Unknown (config error)"
 
 ### 7. Error Log Check
@@ -184,12 +184,12 @@ Fix: Run `open ~/Applications/SideQuestApp.app`
 
 **If not authenticated:**
 ```
-⚠️  Not authenticated. Run /sidequest:login to set up SideQuest.
+⚠️  Not authenticated. Run /sidequest:sq-login to set up SideQuest.
 ```
 
 **If plugin is disabled:**
 ```
-⚠️  Plugin is disabled. Run /sidequest:settings enable to resume.
+⚠️  Plugin is disabled. Run /sidequest:sq-settings enable to resume.
 ```
 
 **If DND is active:**

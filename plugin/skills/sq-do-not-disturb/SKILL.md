@@ -3,7 +3,7 @@ name: sq-do-not-disturb
 description: "Do Not Disturb mode — pause quests for 2 hours. Use this when the user says 'stop showing me stuff', 'too many quests', 'quest fatigue', 'these are annoying', 'I'm getting too many notifications', 'not now', 'leave me alone', 'stop interrupting', 'I need a break', 'pause quests for a bit', 'quiet mode', 'mute notifications', or expresses frustration about quest frequency."
 ---
 
-# /sidequest:do-not-disturb
+# /sidequest:sq-do-not-disturb
 
 Pause quests for 2 hours, or cancel an active timer.
 
@@ -62,7 +62,7 @@ Do Not Disturb: ON
 Quests paused for 2 hours.
 Resumes at: {human_readable_time}
 
-Run /sidequest:do-not-disturb again to cancel early.
+Run /sidequest:sq-do-not-disturb again to cancel early.
 ```
 
 If cancelled:
@@ -74,8 +74,8 @@ Quests will resume normally.
 
 ## Error Handling
 
-- If `~/.sidequest/config.json` doesn't exist, tell the user: "SideQuest not configured. Run /sidequest:login first."
-- If JSON parsing fails, tell the user: "Config file is corrupted. Run /sidequest:login to reset."
+- If `~/.sidequest/config.json` doesn't exist, tell the user: "SideQuest not configured. Run /sidequest:sq-login first."
+- If JSON parsing fails, tell the user: "Config file is corrupted. Run /sidequest:sq-login to reset."
 
 ## Implementation Note
 
