@@ -18,6 +18,8 @@
   <img alt="Plugin" src="https://img.shields.io/github/v/tag/tomer-shavit/sidequest?filter=plugin-v*&label=plugin">
 </p>
 
+SideQuest watches what you're working on inside Claude Code and surfaces one contextual dev-tool suggestion when it actually fits — a native macOS card you can dismiss with a keystroke, capped at 5 a day. No feed. No email. No LLM mediation. Conversation content stays on your machine; matching runs on anonymous IDs and on-device embeddings.
+
 ---
 
 ## Install
@@ -30,16 +32,7 @@ Installs the plugin into Claude Code, downloads the native macOS notification ap
 
 That's it. Quests appear when context says they're useful.
 
-> **Want to read the script before running it?** `curl https://get.trysidequest.ai/install.sh` (without piping to bash) prints the source. The same script also lives at [`scripts/install.sh`](scripts/install.sh) in this repo for GitHub-side audit.
->
-> **Verify the bytes match the repo copy:**
->
-> ```bash
-> curl -fsSL https://get.trysidequest.ai/install.sh | shasum -a 256
-> # Expect: dae4b81a9339b6bc24f1a65dbd23d92037b8fdf70af48af3863a3347761c7d0a
-> ```
->
-> Hash above is for the current `scripts/install.sh` at HEAD on `main`. For a release-pinned check, compare against `git show plugin-vX.Y.Z:scripts/install.sh | shasum -a 256`.
+Auditing the install script? See [BUILD.md](BUILD.md) — covers source review, SHA256 verification against the repo copy, and release-tag pinning.
 
 ---
 
@@ -52,7 +45,7 @@ That's it. Quests appear when context says they're useful.
 
 - **Right tool, right moment.** While you're debugging Postgres, get a pointer to a faster connection pooler. Not a feed. Not a newsletter. A timed nudge inside the editor where you already are.
 - **Native, not LLM-mediated.** Quests render through a real macOS notification card via the SideQuest app — 100% delivery. Doesn't depend on Claude choosing to surface anything.
-- **Privacy by design.** Conversation content never leaves your machine. Only anonymous tag IDs travel — see [Privacy](#privacy).
+- **Privacy by design.** Your words stay on your Mac. Only anonymous IDs and a local embedding of your last turn (text → numbers, on-device) reach our servers. See [Privacy](#privacy).
 - **Cap-respected.** Max 5/day. 20-minute cooldown. One ⌘⌃D dismiss permanently mutes. Do-Not-Disturb is one slash command away.
 - **Open + audit-ready.** MIT. Reproducible plugin tarballs. Source-pinned binaries. See [BUILD.md](BUILD.md) to verify.
 
@@ -82,6 +75,7 @@ Skills available inside Claude Code:
 - Anonymous user ID (UUID, not your email)
 - Anonymous session/tracking ID (UUID per quest)
 - Anonymous tag IDs (e.g. `tag_4791` — never the source string)
+- An on-device embedding of your last turn — your text is turned into a list of numbers locally on your Mac; only those numbers leave, never the words
 - Quest engagement: shown / clicked / dismissed
 - Plugin + app version (for compatibility checks)
 
@@ -92,17 +86,17 @@ Skills available inside Claude Code:
 - `~/.sidequest/sidequest.sock` — Unix socket (plugin ↔ app)
 
 **Code paths to inspect:**
-- Outbound network calls: [`plugin/hooks/stop-hook`](plugin/hooks/stop-hook) (line 361)
-- Unix socket setup: [`plugin/hooks/stop-hook`](plugin/hooks/stop-hook) (line 324)
-- Tag anonymization: [`plugin/hooks/extract-context.py`](plugin/hooks/extract-context.py) (line 58)
+- Outbound network calls: [`plugin/hooks/stop-hook`](plugin/hooks/stop-hook)
+- On-device embedding (where text becomes numbers): [`macOS/SideQuestApp/Models/EmbeddingModel.swift`](macOS/SideQuestApp/Models/EmbeddingModel.swift)
+- Tag anonymization: [`plugin/hooks/extract-context.py`](plugin/hooks/extract-context.py)
 
 ## How it works
 
-**Plugin** (Claude Code hook). Runs as a stop-hook + session-start hook. Extracts local tag IDs from your project context. Calls the API for the least-shown matching quest. Sends the chosen quest to the native app over a Unix socket. Source: [`plugin/hooks/`](plugin/hooks/).
+**Plugin** (Claude Code hook). A stop-hook and session-start hook. Pulls anonymous tag IDs from your project context and hands your last turn to the native app for on-device embedding, then asks the API for the matching quest and passes it back to the app to display. Source: [`plugin/hooks/`](plugin/hooks/).
 
-**Native app** (macOS). Listens on the Unix socket. Renders each quest as a macOS-native floating card, top-right. Handles open/skip keyboard. Auto-launches at login via SMAppService. Source: [`macOS/`](macOS/).
+**Native app** (macOS). Embeds your last turn locally — text in, numbers out, words never leave the app. Renders each quest as a native floating card, top-right. Handles open/skip keyboard. Auto-launches at login. Source: [`macOS/`](macOS/).
 
-**API** (Lambda + Postgres). Receives `(user_id, tag_ids[])`. Returns one quest. Tracks shown/clicked/dismissed events. **Never receives prompt content.** Source: not in this repo (see `tomer-shavit/sidequest-ai` if you have access).
+**API.** Takes the anonymous IDs + the on-device embedding, returns one quest from the catalog. **Never sees your prompt content.**
 
 ## Updates + uninstall
 
