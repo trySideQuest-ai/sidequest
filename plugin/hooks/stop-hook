@@ -72,6 +72,31 @@ fi
 API_BASE="${API_BASE:-https://api.trysidequest.ai}"
 
 # ============================================================================
+# Liveness ping — fires before any gate so every authenticated turn is observable.
+# Best-effort: 2s timeout, errors swallowed, runs in background.
+# ============================================================================
+
+sq_ping() {
+  local plugin_dir version
+  plugin_dir="$(cd "$(dirname "$0")" && pwd)"
+  version="unknown"
+  if [ -f "$plugin_dir/../VERSION" ]; then
+    version=$(tr -d '[:space:]' < "$plugin_dir/../VERSION" 2>/dev/null || echo unknown)
+    [ -z "$version" ] && version="unknown"
+  fi
+
+  curl -sS -m 2 -X POST "$API_BASE/ping" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"client_version\":\"$version\",\"source\":\"plugin\"}" \
+    >/dev/null 2>&1 &
+  disown 2>/dev/null || true
+  return 0
+}
+
+sq_ping || true
+
+# ============================================================================
 # PHASE 1.5: Session-depth gate — require N user turns in session before firing
 # why: first message of a fresh session has only static repo-scan context (no
 # live conversation signal), producing random-feeling quest fires. Naive per-
