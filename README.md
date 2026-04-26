@@ -61,7 +61,7 @@ Skills available inside Claude Code:
 | `/sidequest:sq-do-not-disturb` | Pause quests for 2 hours. |
 | `/sidequest:sq-retrigger` | Re-show the last quest. |
 | `/sidequest:sq-feedback` | Send feedback. |
-| `/sidequest:sq-reinstall` | Pull the latest plugin + app. |
+| `/sidequest:sq-update` | Pull the latest plugin + app. |
 | `/sidequest:sq-uninstall` | Remove everything. |
 
 ## Privacy

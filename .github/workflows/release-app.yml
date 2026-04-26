@@ -165,7 +165,7 @@ jobs:
 
             Or in Claude Code:
             ```
-            /sidequest:sq-reinstall
+            /sidequest:sq-update
             ```
           draft: false
           prerelease: false

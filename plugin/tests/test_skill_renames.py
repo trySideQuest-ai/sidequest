@@ -20,7 +20,8 @@ RENAMES = [
     ("feedback", "sq-feedback"),
     ("retrigger", "sq-retrigger"),
     ("do-not-disturb", "sq-do-not-disturb"),
-    ("reinstall", "sq-reinstall"),
+    ("reinstall", "sq-update"),
+    ("sq-reinstall", "sq-update"),
     ("uninstall", "sq-uninstall"),
 ]
 

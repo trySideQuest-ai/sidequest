@@ -350,7 +350,7 @@ if not installed:
     sys.exit(0)
 
 if installed != latest:
-    print(f"**App update available:** v{installed} installed, v{latest} available. Run /sidequest:sq-reinstall to upgrade.")
+    print(f"**App update available:** v{installed} installed, v{latest} available. Run /sidequest:sq-update to upgrade.")
 PYEOF
 )
 

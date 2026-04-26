@@ -29,7 +29,7 @@ Source under `plugin/skills/`. Each skill is a directory with a `SKILL.md` (fron
 | `sq-do-not-disturb` | `do-not-disturb` | 2-hour pause |
 | `sq-retrigger` | `retrigger` | Re-show last quest |
 | `sq-feedback` | `feedback` | Send feedback |
-| `sq-reinstall` | `reinstall` | Pull latest plugin + app from remote-config.json |
+| `sq-update` | `sq-reinstall`, `reinstall` | Pull latest plugin + app from remote-config.json |
 | `sq-uninstall` | `uninstall` | Wipe everything |
 
 ## Quest triggers + frequency
