@@ -288,7 +288,7 @@ fi
 # ============================================================================
 # PHASE 4.9: Extract last user and assistant messages for embedding inference
 # Reads Claude CLI session state (.jsonl) to get message context for tokenization
-# Messages truncated to 500 chars each; passed to native app for ANE inference
+# Messages truncated to 1024 chars each (increased from 500); passed to native app for ANE inference
 # ============================================================================
 
 LAST_MESSAGES='{"user_msg":"","asst_msg":""}'
@@ -330,8 +330,8 @@ if os.path.isdir(projects_dir):
                   text = ' '.join(p.get('text', '') for p in content if isinstance(p, dict) and p.get('type') == 'text')
 
                 if text:
-                  # Truncate to 500 chars
-                  text = text[:500]
+                  # Truncate to 1024 chars (per IPC-01, increased from 500)
+                  text = text[:1024]
                   if kind == 'user':
                     user_msg = text
                   else:

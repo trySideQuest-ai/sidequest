@@ -22,25 +22,44 @@ from ipc_utils import (
 class TestVectorValidation:
   """Test vector validation logic."""
 
-  def test_validate_valid_vector(self):
-    """Valid 384-dim vector passes."""
+  def test_validate_valid_384dim_vector(self):
+    """Valid 384-dim vector (v2.1 legacy) passes."""
     vec = [0.5] * 384
     assert validate_vector(vec)
 
+  def test_validate_valid_768dim_vector(self):
+    """Valid 768-dim vector (v2.2 EmbeddingGemma) passes."""
+    vec = [0.5] * 768
+    assert validate_vector(vec)
+
   def test_validate_wrong_length(self):
-    """Wrong length fails."""
+    """Wrong length (not 384 or 768) fails."""
     vec = [0.5] * 100
+    assert not validate_vector(vec)
+    vec = [0.5] * 512
     assert not validate_vector(vec)
 
   def test_validate_nan(self):
-    """NaN fails validation."""
+    """NaN fails validation (384-dim)."""
     vec = [0.5] * 384
     vec[0] = float('nan')
     assert not validate_vector(vec)
 
+  def test_validate_nan_768dim(self):
+    """NaN fails validation (768-dim)."""
+    vec = [0.5] * 768
+    vec[0] = float('nan')
+    assert not validate_vector(vec)
+
   def test_validate_inf(self):
-    """Infinity fails validation."""
+    """Infinity fails validation (384-dim)."""
     vec = [0.5] * 384
+    vec[0] = float('inf')
+    assert not validate_vector(vec)
+
+  def test_validate_inf_768dim(self):
+    """Infinity fails validation (768-dim)."""
+    vec = [0.5] * 768
     vec[0] = float('inf')
     assert not validate_vector(vec)
 
@@ -110,21 +129,47 @@ class TestIPCRequest:
     assert req["freshness"] == 0.5
 
   def test_build_request_truncation(self):
-    """Messages truncated to 500 chars."""
-    long_msg = "x" * 1000
+    """Messages truncated to 1024 chars (increased from 500 per IPC-01)."""
+    long_msg = "x" * 2000
     req = build_ipc_request(user_msg=long_msg)
-    assert len(req["user_msg"]) == 500
+    assert len(req["user_msg"]) == 1024
+
+  def test_build_request_both_messages_truncated(self):
+    """Both user and assistant messages truncated to 1024 chars."""
+    long_user = "u" * 2000
+    long_asst = "a" * 2000
+    req = build_ipc_request(user_msg=long_user, asst_msg=long_asst)
+    assert len(req["user_msg"]) == 1024
+    assert len(req["asst_msg"]) == 1024
 
 
 class TestIPCResponseValidation:
   """Test IPC response validation."""
 
-  def test_validate_response_with_vectors(self):
-    """Response with valid vectors passes."""
+  def test_validate_response_with_384dim_vectors(self):
+    """Response with valid 384-dim vectors (v2.1) passes."""
     response = {
       "user_vec": [0.5] * 384,
       "asst_vec": [0.5] * 384,
       "inference_ms": 45,
+    }
+    assert validate_ipc_response(response)
+
+  def test_validate_response_with_768dim_vectors(self):
+    """Response with valid 768-dim vectors (v2.2) passes."""
+    response = {
+      "user_vec": [0.5] * 768,
+      "asst_vec": [0.5] * 768,
+      "inference_ms": 45,
+    }
+    assert validate_ipc_response(response)
+
+  def test_validate_response_mixed_dim(self):
+    """Response with one 384-dim, one 768-dim passes (length-route server-side)."""
+    response = {
+      "user_vec": [0.5] * 384,
+      "asst_vec": [0.5] * 768,
+      "inference_ms": 50,
     }
     assert validate_ipc_response(response)
 
@@ -133,7 +178,7 @@ class TestIPCResponseValidation:
     response = {
       "user_vec": None,
       "asst_vec": None,
-      "inference_ms": 1001,
+      "inference_ms": 1501,
       "error": "timeout",
     }
     assert validate_ipc_response(response)
@@ -141,7 +186,7 @@ class TestIPCResponseValidation:
   def test_validate_response_mixed(self):
     """Response with one vector valid, one null."""
     response = {
-      "user_vec": [0.5] * 384,
+      "user_vec": [0.5] * 768,
       "asst_vec": None,
     }
     assert validate_ipc_response(response)
@@ -158,8 +203,8 @@ class TestIPCResponseValidation:
 class TestExtractVectors:
   """Test vector extraction for server."""
 
-  def test_extract_valid_vectors(self):
-    """Extract both vectors."""
+  def test_extract_valid_384dim_vectors(self):
+    """Extract both 384-dim vectors."""
     response = {
       "user_vec": [0.5] * 384,
       "asst_vec": [0.6] * 384,
@@ -168,11 +213,33 @@ class TestExtractVectors:
     assert result["user_vec"] is not None
     assert result["asst_vec"] is not None
 
+  def test_extract_valid_768dim_vectors(self):
+    """Extract both 768-dim vectors."""
+    response = {
+      "user_vec": [0.5] * 768,
+      "asst_vec": [0.6] * 768,
+    }
+    result = extract_vectors_for_server(response)
+    assert result["user_vec"] is not None
+    assert result["asst_vec"] is not None
+
+  def test_extract_mixed_dim_passthrough(self):
+    """Mixed dimension vectors pass through unchanged (server length-routes)."""
+    response = {
+      "user_vec": [0.5] * 384,
+      "asst_vec": [0.6] * 768,
+    }
+    result = extract_vectors_for_server(response)
+    assert result["user_vec"] is not None
+    assert len(result["user_vec"]) == 384
+    assert result["asst_vec"] is not None
+    assert len(result["asst_vec"]) == 768
+
   def test_extract_null_on_invalid(self):
     """Invalid vector becomes null in result."""
     response = {
       "user_vec": [0.5] * 100,  # Invalid length
-      "asst_vec": [0.6] * 384,  # Valid
+      "asst_vec": [0.6] * 768,  # Valid
     }
     result = extract_vectors_for_server(response)
     assert result["user_vec"] is None

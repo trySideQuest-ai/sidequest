@@ -15,7 +15,7 @@ def validate_vector(vector):
     vector: list of floats or None
 
   Returns:
-    True if valid 384-dim vector with finite values, False otherwise
+    True if valid 384-dim (v2.1) or 768-dim (v2.2) vector with finite values, False otherwise
   """
   if vector is None:
     return False
@@ -23,7 +23,8 @@ def validate_vector(vector):
   if not isinstance(vector, list):
     return False
 
-  if len(vector) != 384:
+  # Accept both legacy 384-dim (MiniLM) and new 768-dim (EmbeddingGemma) per IPC-02
+  if len(vector) not in (384, 768):
     return False
 
   for val in vector:
@@ -64,7 +65,8 @@ def deserialize_vector(strings):
     if not isinstance(strings, list):
       return None
 
-    if len(strings) != 384:
+    # Accept both 384-dim (v2.1) and 768-dim (v2.2) per IPC-02
+    if len(strings) not in (384, 768):
       return None
 
     vector = [float(v) for v in strings]
@@ -80,10 +82,10 @@ def build_ipc_request(user_msg='', asst_msg='', user_vec=None, asst_vec=None, ta
   """Build IPC request dict with messages and optional vectors.
 
   Args:
-    user_msg: user message text (string, truncated to 500 chars)
-    asst_msg: assistant message text (string, truncated to 500 chars)
-    user_vec: user embedding vector (list) or None
-    asst_vec: assistant embedding vector (list) or None
+    user_msg: user message text (string, truncated to 1024 chars per IPC-01)
+    asst_msg: assistant message text (string, truncated to 1024 chars per IPC-01)
+    user_vec: user embedding vector (384 or 768-dim, per IPC-02) or None
+    asst_vec: assistant embedding vector (384 or 768-dim, per IPC-02) or None
     tags: list of tag dicts with slug/weight
     freshness: freshness score (0-1)
 
@@ -91,11 +93,11 @@ def build_ipc_request(user_msg='', asst_msg='', user_vec=None, asst_vec=None, ta
     Dict for IPC transmission
   """
   payload = {
-    'user_msg': (user_msg or '')[:500],
-    'asst_msg': (asst_msg or '')[:500],
+    'user_msg': (user_msg or '')[:1024],  # Increased from 500 per IPC-01
+    'asst_msg': (asst_msg or '')[:1024],  # Increased from 500 per IPC-01
   }
 
-  # Add vectors if both are valid
+  # Add vectors if both are valid (accept 384 or 768-dim per IPC-02)
   if user_vec is not None and asst_vec is not None:
     if validate_vector(user_vec) and validate_vector(asst_vec):
       payload['user_vec'] = user_vec
