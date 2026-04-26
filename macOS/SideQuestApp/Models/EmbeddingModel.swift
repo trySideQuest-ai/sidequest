@@ -2,29 +2,66 @@ import Foundation
 import CoreML
 import CryptoKit
 
+/// Model type enumeration for version detection.
+/// Determines which model variant to load based on config.
+enum EmbeddingModelType {
+  case minilmL6V2  // v2.1: 384-dim
+  case embeddinggemma300m  // v2.2: 768-dim
+
+  static func current() -> EmbeddingModelType {
+    // Read model_version from config; default to MiniLM for backward compat
+    let home = FileManager.default.homeDirectoryForCurrentUser
+    let configPath = home.appendingPathComponent(".sidequest/config.json").path
+
+    if let configData = try? Data(contentsOf: URL(fileURLWithPath: configPath)),
+       let json = try? JSONSerialization.jsonObject(with: configData) as? [String: Any],
+       let version = json["model_version"] as? String,
+       version.contains("embeddinggemma") {
+      return .embeddinggemma300m
+    }
+    return .minilmL6V2
+  }
+}
+
 /// Manages CoreML model loading and caching for embedding inference.
 /// Handles S3 downloads with exponential backoff retry and SHA256 verification.
 actor EmbeddingModel {
   private var mlModel: MLModel?
   private let modelCachePath: String
   private let modelVersion = "2.1.0"
+  private let modelType: EmbeddingModelType
 
   init() {
     let home = FileManager.default.homeDirectoryForCurrentUser
     self.modelCachePath = home.appendingPathComponent(".sidequest/models").path
+    self.modelType = EmbeddingModelType.current()
   }
 
   /// Filesystem path of the .mlmodelc directory shipped inside the tarball.
   /// AppDelegate reads this to know where the compiled model lives after fetch.
   nonisolated var modelDirPath: String {
-    return "\(modelCachePath)/minilm-l6-v2-\(modelVersion).mlmodelc"
+    switch modelType {
+    case .minilmL6V2:
+      return "\(modelCachePath)/minilm-l6-v2-\(modelVersion).mlmodelc"
+    case .embeddinggemma300m:
+      return "\(modelCachePath)/embeddinggemma-300m-\(modelVersion).mlmodelc"
+    }
   }
 
-  /// Filesystem path of the BERT vocab.txt shipped alongside the model in the
-  /// same tarball. WordPieceTokenizer is initialized from this path after
-  /// loadOrFetch() succeeds — pairing keeps vocab version-locked to the model.
+  /// Filesystem path of the tokenizer data shipped alongside the model.
+  /// For MiniLM: BERT vocab.txt. For EmbeddingGemma: SentencePiece .model file.
+  nonisolated var tokenizerPath: String {
+    switch modelType {
+    case .minilmL6V2:
+      return "\(modelCachePath)/minilm-l6-v2-\(modelVersion)-vocab.txt"
+    case .embeddinggemma300m:
+      return "\(modelCachePath)/embeddinggemma-300m-\(modelVersion)-tokenizer.model"
+    }
+  }
+
+  /// Deprecated: vocabPath remains for backward compat with v2.1 code.
   nonisolated var vocabPath: String {
-    return "\(modelCachePath)/minilm-l6-v2-\(modelVersion)-vocab.txt"
+    return tokenizerPath
   }
 
   /// Attempts to load model from cache; fetches from S3 if not cached.
