@@ -87,10 +87,10 @@ actor EmbeddingGemmaModel {
       for i in 0..<seqLen {
         if i < realCount {
           idsArray[i] = NSNumber(value: Int32(tokenIds[i]))
-          maskArray[i] = NSNumber(value: Float16(1.0))
+          maskArray[i] = NSNumber(value: Float(1.0))
         } else {
           idsArray[i] = NSNumber(value: Int32(0))
-          maskArray[i] = NSNumber(value: Float16(0.0))
+          maskArray[i] = NSNumber(value: Float(0.0))
         }
       }
 
