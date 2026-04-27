@@ -81,7 +81,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             eventQueue: eventQueue!,
             userId: userId,
             hotkeyManager: hotkeyManager!,
-            panelController: panelController!
+            panelController: panelController!,
+            stateManager: stateManager!
         )
 
         // Initialize EventSyncManager

@@ -25,6 +25,7 @@ final class QuestPresenter: ObservableObject {
     private let userId: String
     private let hotkeyManager: HotkeyManager
     private let panelController: QuestPanelController
+    private let stateManager: StateManager
 
     // Display tracking per quest
     private var displayStart: [UUID: Date] = [:]
@@ -34,21 +35,42 @@ final class QuestPresenter: ObservableObject {
     private var dismissRemaining: TimeInterval = 0
     private var timerStartDate: Date?
 
+    // GitHub-star prompt — in-memory mirrors of StateManager flags so push()
+    // stays synchronous. Hydrated from persistent state at init; updated on
+    // first non-welcome click and after the prompt is shown.
+    private var pendingGithubStarPrompt: Bool = false
+    private var githubStarPromptShown: Bool = false
+
     // MARK: - Init
 
     init(
         eventQueue: EventQueue,
         userId: String,
         hotkeyManager: HotkeyManager,
-        panelController: QuestPanelController
+        panelController: QuestPanelController,
+        stateManager: StateManager
     ) {
         self.eventQueue = eventQueue
         self.userId = userId
         self.hotkeyManager = hotkeyManager
         self.panelController = panelController
+        self.stateManager = stateManager
 
         hotkeyManager.onOpen = { [weak self] in self?.openTop() }
         hotkeyManager.onDismiss = { [weak self] in self?.dismissTop() }
+
+        // Hydrate flags from persistent state. Cold-start race window before
+        // this completes is acceptable — worst case the prompt fires one
+        // quest later than it could have.
+        Task { [weak self] in
+            guard let sm = self?.stateManager else { return }
+            let pending = await sm.hasClickedNonWelcomeQuest()
+            let shown = await sm.hasShownGithubStarPrompt()
+            await MainActor.run { [weak self] in
+                self?.pendingGithubStarPrompt = pending
+                self?.githubStarPromptShown = shown
+            }
+        }
     }
 
     // MARK: - Visible stack (top-N for rendering)
@@ -67,7 +89,22 @@ final class QuestPresenter: ObservableObject {
     // MARK: - Push
 
     func push(_ data: QuestData) {
-        let quest = Quest(from: data)
+        // One-shot GitHub-star prompt: if the user has clicked a non-welcome
+        // quest and we haven't shown the prompt yet, swap this push for the
+        // local prompt. The incoming quest is dropped — server picks another
+        // on the next stop-hook turn.
+        let payload: QuestData
+        if pendingGithubStarPrompt && !githubStarPromptShown {
+            payload = SpecialQuests.githubStarPrompt()
+            pendingGithubStarPrompt = false
+            githubStarPromptShown = true
+            let sm = stateManager
+            Task { await sm.markGithubStarPromptShown() }
+        } else {
+            payload = data
+        }
+
+        let quest = Quest(from: payload)
         // Show panel FIRST so SwiftUI renders insertion transition inside a visible window
         if stack.isEmpty {
             panelController.show(presenter: self)
@@ -109,6 +146,19 @@ final class QuestPresenter: ObservableObject {
                 "time_to_click_ms": .double(dtMs),
                 "source": .string("click")
              ])
+
+        // First click on a real quest (not the welcome card and not the
+        // local star prompt itself) arms the GitHub-star prompt for the
+        // next push.
+        if quest.sourceQuestId != SpecialQuests.welcomeQuestId
+            && quest.sourceQuestId != SpecialQuests.githubStarQuestId
+            && !pendingGithubStarPrompt
+            && !githubStarPromptShown {
+            pendingGithubStarPrompt = true
+            let sm = stateManager
+            Task { await sm.markClickedNonWelcomeQuest() }
+        }
+
         openURL(quest.openURL)
         remove(id)
     }
@@ -212,6 +262,8 @@ final class QuestPresenter: ObservableObject {
                       questId: String,
                       trackingId: String,
                       metadata: [String: AnyCodable]) {
+        // GitHub-star prompt has no DB row — skip event sync to avoid FK errors.
+        if questId == SpecialQuests.githubStarQuestId { return }
         let uid = userId
         Task {
             await self.eventQueue.addEvent(

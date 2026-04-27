@@ -17,6 +17,30 @@ actor StateManager {
 
     struct DisplayState: Codable {
         var user_enabled: Bool = true
+        // Set to true the first time the user opens a quest that isn't the
+        // welcome quest. Arms the GitHub-star prompt for the next push.
+        var clicked_non_welcome_quest: Bool = false
+        // Set to true once the GitHub-star prompt has been shown.
+        // One-shot — never reset.
+        var shown_github_star_prompt: Bool = false
+
+        enum CodingKeys: String, CodingKey {
+            case user_enabled
+            case clicked_non_welcome_quest
+            case shown_github_star_prompt
+        }
+
+        init() {}
+
+        // Tolerant decode: missing keys fall back to defaults, so older
+        // state.json files (pre-GitHub-star-prompt) don't fail decoding
+        // and clobber user_enabled in the catch path.
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.user_enabled = (try? c.decode(Bool.self, forKey: .user_enabled)) ?? true
+            self.clicked_non_welcome_quest = (try? c.decode(Bool.self, forKey: .clicked_non_welcome_quest)) ?? false
+            self.shown_github_star_prompt = (try? c.decode(Bool.self, forKey: .shown_github_star_prompt)) ?? false
+        }
     }
 
     init(stateFileName: String = "state.json") {
@@ -33,6 +57,28 @@ actor StateManager {
     func setUserEnabled(_ enabled: Bool) {
         var state = readState()
         state.user_enabled = enabled
+        writeState(state)
+    }
+
+    func hasClickedNonWelcomeQuest() -> Bool {
+        readState().clicked_non_welcome_quest
+    }
+
+    func hasShownGithubStarPrompt() -> Bool {
+        readState().shown_github_star_prompt
+    }
+
+    func markClickedNonWelcomeQuest() {
+        var state = readState()
+        guard !state.clicked_non_welcome_quest else { return }
+        state.clicked_non_welcome_quest = true
+        writeState(state)
+    }
+
+    func markGithubStarPromptShown() {
+        var state = readState()
+        guard !state.shown_github_star_prompt else { return }
+        state.shown_github_star_prompt = true
         writeState(state)
     }
 

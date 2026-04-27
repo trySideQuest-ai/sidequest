@@ -39,3 +39,28 @@ struct Quest: Identifiable, Equatable {
 
     static func == (lhs: Quest, rhs: Quest) -> Bool { lhs.id == rhs.id }
 }
+
+// Sentinel quest IDs for client-side special quests.
+//
+// welcomeQuestId is a real DB row with active=false (see plugin/hooks/stop-hook),
+// so backend events with that FK insert cleanly.
+//
+// githubStarQuestId is local-only — it has no DB row, so QuestPresenter must
+// skip emitting events for it (otherwise the events sync would FK-fail).
+enum SpecialQuests {
+    static let welcomeQuestId = "00000000-0000-0000-0000-000000000001"
+    static let githubStarQuestId = "00000000-0000-0000-0000-000000000002"
+    static let githubRepoURL = "https://github.com/trysidequest-ai/sidequest"
+
+    static func githubStarPrompt() -> QuestData {
+        QuestData(
+            quest_id: githubStarQuestId,
+            display_text: "Star SideQuest on GitHub?",
+            subtitle: "Stars are how indie questers like us level up. One click — totally free, +100 morale.",
+            tracking_url: githubRepoURL,
+            reward_amount: 0,
+            brand_name: "SideQuest",
+            category: "Community"
+        )
+    }
+}
