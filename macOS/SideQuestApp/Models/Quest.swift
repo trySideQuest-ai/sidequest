@@ -56,7 +56,7 @@ enum SpecialQuests {
         QuestData(
             quest_id: githubStarQuestId,
             display_text: "Star SideQuest on GitHub?",
-            subtitle: "Stars are how indie questers like us level up. One click — totally free, +100 morale.",
+            subtitle: "Stars are how builders like us level up. It will make our day.",
             tracking_url: githubRepoURL,
             reward_amount: 0,
             brand_name: "SideQuest",
