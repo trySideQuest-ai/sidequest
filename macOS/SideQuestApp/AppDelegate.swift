@@ -239,26 +239,24 @@ extension AppDelegate {
 
     func handleDirectQuest(_ quest: QuestData) {
         Task { @MainActor in
-            if let stateManager = self.stateManager {
-                let shouldShow = await stateManager.shouldDisplayQuest()
-                if !shouldShow {
-                    ErrorHandler.logInfo("Quest blocked by state manager")
-                    return
-                }
+            // shouldDisplayQuest() now checks only the local user_enabled
+            // kill switch — daily cap and cooldown live on the server,
+            // which already filtered before the IPC push reached us.
+            if let stateManager = self.stateManager,
+               await !stateManager.shouldDisplayQuest() {
+                ErrorHandler.logInfo("Quest blocked by user_enabled=false")
+                return
             }
-            await self.stateManager?.recordDisplay()
             self.questPresenter?.push(quest)
         }
     }
 
     func handleIPCTrigger(questId: String, trackingId: String) {
         Task { @MainActor in
-            if let stateManager = self.stateManager {
-                let shouldShow = await stateManager.shouldDisplayQuest()
-                if !shouldShow {
-                    ErrorHandler.logInfo("Quest blocked by state manager (cooldown/cap/disabled)")
-                    return
-                }
+            if let stateManager = self.stateManager,
+               await !stateManager.shouldDisplayQuest() {
+                ErrorHandler.logInfo("Quest blocked by user_enabled=false")
+                return
             }
 
             guard let apiClient = self.apiClient else {
@@ -268,7 +266,6 @@ extension AppDelegate {
 
             do {
                 let questData = try await apiClient.fetchQuest()
-                await self.stateManager?.recordDisplay()
                 self.questPresenter?.push(questData)
             } catch {
                 ErrorHandler.logNetworkError(error, endpoint: "/quest")
