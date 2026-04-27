@@ -48,41 +48,51 @@ class EmbeddingModelMetrics {
         self.snapshots.removeFirst(self.snapshots.count - 1000)
       }
 
-      // Export to persistent JSON after each record
-      self.persistMetricsJSON()
+      // Persist inline. We're already on `queue`, so going through
+      // exportMetricsJSON()→getSessionMetrics() would re-enter queue.sync
+      // and trip libdispatch's deadlock detector (BUG IN CLIENT OF
+      // LIBDISPATCH: dispatch_sync called on queue already owned by
+      // current thread). Compute the aggregates directly from snapshots
+      // and write the file without re-locking.
+      let aggregates = self.aggregatesLocked()
+      self.writeAggregatesUnsafe(aggregates)
     }
   }
 
-  /// Get aggregated metrics for the current session (EVAL-04/05 reporting)
+  /// Get aggregated metrics for the current session (EVAL-04/05 reporting).
+  /// Public entry — locks the queue. Do NOT call from code already running
+  /// on `queue`; use `aggregatesLocked()` for that path.
   func getSessionMetrics() -> [String: Any] {
+    return queue.sync { aggregatesLocked() }
+  }
+
+  /// Compute aggregates from snapshots. CALLER MUST already be on `queue`.
+  private func aggregatesLocked() -> [String: Any] {
     var aggregates: [String: Any] = [:]
     var stageMetrics: [String: [Double]] = [:]
 
-    queue.sync {
-      for snapshot in snapshots {
-        if stageMetrics[snapshot.stage] == nil {
-          stageMetrics[snapshot.stage] = []
-        }
-        stageMetrics[snapshot.stage]?.append(snapshot.durationMs)
+    for snapshot in snapshots {
+      if stageMetrics[snapshot.stage] == nil {
+        stageMetrics[snapshot.stage] = []
       }
+      stageMetrics[snapshot.stage]?.append(snapshot.durationMs)
+    }
 
-      // Compute p50, p99, mean per stage
-      for (stage, durations) in stageMetrics {
-        let sorted = durations.sorted()
-        let p50Index = Int(Double(sorted.count) * 0.50)
-        let p99Index = Int(Double(sorted.count) * 0.99)
+    for (stage, durations) in stageMetrics {
+      let sorted = durations.sorted()
+      let p50Index = Int(Double(sorted.count) * 0.50)
+      let p99Index = Int(Double(sorted.count) * 0.99)
 
-        let p50 = p50Index < sorted.count ? sorted[p50Index] : sorted.last ?? 0
-        let p99 = p99Index < sorted.count ? sorted[p99Index] : sorted.last ?? 0
-        let mean = durations.reduce(0, +) / Double(durations.count)
+      let p50 = p50Index < sorted.count ? sorted[p50Index] : sorted.last ?? 0
+      let p99 = p99Index < sorted.count ? sorted[p99Index] : sorted.last ?? 0
+      let mean = durations.reduce(0, +) / Double(durations.count)
 
-        aggregates[stage] = [
-          "p50_ms": p50,
-          "p99_ms": p99,
-          "mean_ms": mean,
-          "count": durations.count
-        ]
-      }
+      aggregates[stage] = [
+        "p50_ms": p50,
+        "p99_ms": p99,
+        "mean_ms": mean,
+        "count": durations.count,
+      ]
     }
 
     return aggregates
@@ -100,11 +110,12 @@ class EmbeddingModelMetrics {
     }
   }
 
-  /// Persist metrics to disk (~/Library/Application Support/SideQuest/embedding-metrics.json)
-  private func persistMetricsJSON() {
-    let jsonString = exportMetricsJSON()
+  /// Write pre-computed aggregates to disk without re-locking. Used from
+  /// within the queue.async block in recordLatency.
+  private func writeAggregatesUnsafe(_ aggregates: [String: Any]) {
     do {
-      try jsonString.write(toFile: metricsFilePath, atomically: true, encoding: .utf8)
+      let json = try JSONSerialization.data(withJSONObject: aggregates, options: .prettyPrinted)
+      try json.write(to: URL(fileURLWithPath: metricsFilePath), options: .atomic)
     } catch {
       ErrorHandler.logInfo("Failed to persist metrics to disk: \(error)")
     }

@@ -10,9 +10,10 @@ struct SideQuestApp: App {
         } label: {
             Image("menubar-icon")
                 .resizable()
-                .renderingMode(.template)
+                .renderingMode(.original)
+                .interpolation(.high)
                 .scaledToFit()
-                .frame(width: 18, height: 18)
+                .frame(width: 22, height: 22)
                 .help("SideQuest — Quest notifications")
         }
         .menuBarExtraStyle(.menu)

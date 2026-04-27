@@ -8,7 +8,11 @@ import CryptoKit
 actor EmbeddingGemmaModel {
   private var mlModel: MLModel?
   private let modelCachePath: String
-  private let modelVersion = "1.0.0"
+  // Must match the tarball's directory name produced by
+  // scripts/build-embeddinggemma-tarball.sh (MODEL_VERSION="1.0"). A
+  // mismatch leaves tryLoadCached() perpetually returning nil and the
+  // bootstrap silently degrades to null-vector mode.
+  private let modelVersion = "1.0"
   private let modelName = "embeddinggemma-300m"
 
   init() {
@@ -106,9 +110,16 @@ actor EmbeddingGemmaModel {
       }
 
       let input = EmbeddingGemmaModelInput(input_ids: idsArray, attention_mask: maskArray)
-      let output = try model.prediction(from: input) as! EmbeddingGemmaModelOutput
+      // CoreML's `predict` returns its own concrete MLFeatureProvider
+      // implementation; force-casting to a custom output struct crashes
+      // with swift_dynamicCastFailure at runtime. Read the named output
+      // feature through the protocol instead.
+      let output = try model.prediction(from: input)
+      guard let embedding = output.featureValue(for: "embedding")?.multiArrayValue else {
+        ErrorHandler.logInfo("EmbeddingGemmaModel: missing 'embedding' output feature")
+        return nil
+      }
 
-      let embedding = output.embedding
       var result: [Float] = []
       result.reserveCapacity(embedding.count)
       for i in 0..<embedding.count {
@@ -278,24 +289,3 @@ class EmbeddingGemmaModelInput: NSObject, MLFeatureProvider {
   }
 }
 
-/// Expected CoreML model output structure.
-class EmbeddingGemmaModelOutput: NSObject, MLFeatureProvider {
-  let embedding: MLMultiArray
-
-  init(embedding: MLMultiArray) {
-    self.embedding = embedding
-  }
-
-  var featureNames: Set<String> {
-    return Set(arrayLiteral: "embedding")
-  }
-
-  func featureValue(for featureName: String) -> MLFeatureValue? {
-    switch featureName {
-    case "embedding":
-      return MLFeatureValue(multiArray: embedding)
-    default:
-      return nil
-    }
-  }
-}
