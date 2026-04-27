@@ -97,60 +97,82 @@ sq_ping() {
 sq_ping || true
 
 # ============================================================================
-# PHASE 1.5: Session-depth gate — require N user turns in session before firing
-# why: first message of a fresh session has only static repo-scan context (no
-# live conversation signal), producing random-feeling quest fires. Naive per-
-# session counter; session-start hook resets to 0.
+# Welcome quest — fires once on first stop-hook after install. Pushes a
+# hardcoded card via IPC, marks ~/.sidequest/welcome-shown, exits.
+#
+# Sentinel UUID 00000000-0000-0000-0000-000000000001 is a real DB row
+# with active=false (excluded from ranking SQL but valid FK target so
+# events table inserts succeed).
+#
+# If the socket isn't ready (app still bootstrapping ~30s on first run),
+# we still mark welcome-shown so normal quests aren't blocked forever.
 # ============================================================================
 
-SESSION_MIN_MESSAGES=5
-
-SESSION_MSG_COUNT=$(python3 -c "
-import json, os, sys, tempfile
-f = os.path.expanduser('~/.sidequest/session-state.json')
-try:
-    with open(f) as fp:
-        s = json.load(fp)
-except Exception:
-    s = {}
-count = int(s.get('session_msg_count', 0)) + 1
-s['session_msg_count'] = count
-d = os.path.dirname(f)
-os.makedirs(d, exist_ok=True)
-try:
-    fd, tmp = tempfile.mkstemp(dir=d)
-    with os.fdopen(fd, 'w') as fp:
-        json.dump(s, fp)
-    os.rename(tmp, f)
-except Exception:
-    pass
-print(count)
-" 2>/dev/null || echo 0)
-
-if [ "$SESSION_MSG_COUNT" -lt "$SESSION_MIN_MESSAGES" ]; then
+WELCOME_MARKER="$HOME/.sidequest/welcome-shown"
+if [ ! -f "$WELCOME_MARKER" ]; then
+  WELCOME_SOCKET="$HOME/.sidequest/sidequest.sock"
+  SCRIPT_DIR_HOOKS="$(cd "$(dirname "$0")" && pwd)"
+  if [ -S "$WELCOME_SOCKET" ]; then
+    "${SCRIPT_DIR_HOOKS}/xpc-socket-helper.sh" \
+      "00000000-0000-0000-0000-000000000001" \
+      "00000000-0000-0000-0000-000000000001" \
+      "Welcome to SideQuest" \
+      "Side quests appear as you code. Tools matched to what you're building. Pick up or keep grinding." \
+      "https://trysidequest.ai" \
+      "0" "SideQuest" "Onboarding" "" "" 2>/dev/null
+    # Cache for /sidequest:sq-retrigger
+    mkdir -p "$HOME/.sidequest" 2>/dev/null
+    cat > "$HOME/.sidequest/last-quest.json" <<'JSON' 2>/dev/null
+{
+  "quest_id": "00000000-0000-0000-0000-000000000001",
+  "display_text": "Welcome to SideQuest",
+  "subtitle": "Side quests appear as you code. Tools matched to what you're building. Pick up or keep grinding.",
+  "tracking_url": "https://trysidequest.ai",
+  "reward_amount": 0,
+  "brand_name": "SideQuest",
+  "category": "Onboarding"
+}
+JSON
+  fi
+  touch "$WELCOME_MARKER" 2>/dev/null
   exit 0
 fi
 
 # ============================================================================
-# PHASE 1.6: Inter-quest gate — require N user turns since last quest fired
-# why: even with 20-min cooldown, rapid-fire messages within a cooldown window
-# would fire as soon as cooldown expires. Counting turns between quests ensures
-# real work happened between pitches, not just elapsed time. Persistent counter
-# in timing-state.json; reset on quest fire (PHASE 9).
+# Counter + timing-state read (replaces phases 1.5, 1.6, 2, 3)
+#
+# Single rule: increment "messages since last quest"; fire only after every
+# QUEST_EVERY_N user turns. No git/time triggers, no session-depth gate, no
+# advisory lock. Daily cap is enforced in PHASE 4.5 below; counter is reset
+# in PHASE 9 after a quest is delivered.
 # ============================================================================
 
-MIN_MESSAGES_BETWEEN_QUESTS=10
+QUEST_EVERY_N=5
 
-MESSAGES_SINCE_LAST_QUEST=$(python3 -c "
-import json, os, sys, tempfile
+TIMING_FILE="$HOME/.sidequest/timing-state.json"
+CURRENT_TIME=$(date +%s)
+LAST_QUEST_SHOWN=0
+DAILY_QUEST_COUNT=0
+DAILY_RESET_DATE=""
+COUNTER=0
+
+eval "$(python3 -c "
+# F-string expressions used to have commas (e.g. {int(t.get('k', 0))}),
+# which bash brace-expanded inside the \$(...) substitution and corrupted
+# the source. Pre-compute every value into a bare variable so each f-string
+# brace contains a single identifier — no commas, no expansion bug.
+import json, os, shlex, tempfile
 f = os.path.expanduser('~/.sidequest/timing-state.json')
 try:
     with open(f) as fp:
         t = json.load(fp)
 except Exception:
-    t = {}
+    t = dict()
+
 count = int(t.get('messages_since_last_quest', 0)) + 1
 t['messages_since_last_quest'] = count
+
+# Atomic write so a concurrent hook can't see a half-written counter
 d = os.path.dirname(f)
 os.makedirs(d, exist_ok=True)
 try:
@@ -160,105 +182,20 @@ try:
     os.rename(tmp, f)
 except Exception:
     pass
-print(count)
-" 2>/dev/null || echo 0)
 
-if [ "$MESSAGES_SINCE_LAST_QUEST" -lt "$MIN_MESSAGES_BETWEEN_QUESTS" ]; then
+last_quest_shown = int(t.get('last_quest_shown', 0))
+daily_quest_count = int(t.get('daily_quest_count', 0))
+daily_reset_date = shlex.quote(str(t.get('daily_reset_date', '')))
+
+print(f'COUNTER={count}')
+print(f'LAST_QUEST_SHOWN={last_quest_shown}')
+print(f'DAILY_QUEST_COUNT={daily_quest_count}')
+print(f'DAILY_RESET_DATE={daily_reset_date}')
+" 2>/dev/null)"
+
+if [ "$COUNTER" -lt "$QUEST_EVERY_N" ]; then
   exit 0
 fi
-
-# ============================================================================
-# PHASE 2: Load timing state (atomic read)
-# ============================================================================
-
-# Acquire exclusive lock on timing state — if another hook instance holds it, skip this quest
-# Use mkdir-based lock (POSIX-compatible — flock is Linux-only, not available on macOS)
-LOCK_DIR="$HOME/.sidequest/timing-state.lock"
-if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-  # Lock exists — check if stale (>30s = hook crashed without cleanup)
-  if [ -d "$LOCK_DIR" ]; then
-    LOCK_AGE=$(( $(date +%s) - $(stat -f%m "$LOCK_DIR" 2>/dev/null || echo 0) ))
-    if [ "$LOCK_AGE" -gt 30 ]; then
-      rmdir "$LOCK_DIR" 2>/dev/null || true
-      mkdir "$LOCK_DIR" 2>/dev/null || exit 0
-    else
-      exit 0
-    fi
-  else
-    exit 0
-  fi
-fi
-trap 'rmdir "$LOCK_DIR" 2>/dev/null' EXIT
-
-TIMING_FILE="$HOME/.sidequest/timing-state.json"
-CURRENT_TIME=$(date +%s)
-LAST_HOOK_FIRE=0
-LAST_QUEST_SHOWN=0
-DAILY_QUEST_COUNT=0
-DAILY_RESET_DATE=""
-
-if [ -f "$TIMING_FILE" ]; then
-  eval "$(python3 -c "
-import json, shlex, sys, time
-try:
-    with open(sys.argv[1]) as f:
-        t = json.load(f)
-    print(f'LAST_HOOK_FIRE={t.get(\"last_hook_fire\",0)}')
-    print(f'LAST_QUEST_SHOWN={t.get(\"last_quest_shown\",0)}')
-    print(f'DAILY_QUEST_COUNT={t.get(\"daily_quest_count\",0)}')
-    print(f'DAILY_RESET_DATE={shlex.quote(str(t.get(\"daily_reset_date\",\"\")))}')
-except:
-    pass
-" "$TIMING_FILE" 2>/dev/null)"
-fi
-
-# ============================================================================
-# PHASE 3: Check triggers (git commit OR 10min gap)
-# ============================================================================
-
-# Trigger (a): Check for git commit since last hook fire
-GIT_TRIGGER=0
-if git rev-parse --git-dir >/dev/null 2>&1; then
-  # We're in a git repo — check for recent commits
-  LAST_COMMIT_TIME=$(git log -1 --format=%ct 2>/dev/null || echo 0)
-  if [ "$LAST_COMMIT_TIME" -gt "$LAST_HOOK_FIRE" ]; then
-    GIT_TRIGGER=1
-  fi
-fi
-
-# Trigger (b): Check if >10 minutes have elapsed since last hook fire
-TIME_SINCE_LAST_HOOK=$((CURRENT_TIME - LAST_HOOK_FIRE))
-TIME_TRIGGER=0
-if [ "$TIME_SINCE_LAST_HOOK" -gt 600 ]; then
-  TIME_TRIGGER=1
-fi
-
-# If neither trigger fires, skip quest entirely
-if [ "$GIT_TRIGGER" -eq 0 ] && [ "$TIME_TRIGGER" -eq 0 ]; then
-  exit 0
-fi
-
-# Update last_hook_fire immediately — even if no quest is shown downstream,
-# the time trigger must not re-fire on every subsequent stop-hook invocation
-python3 -c "
-import json, os, tempfile
-timing_file = os.path.expanduser('~/.sidequest/timing-state.json')
-try:
-    with open(timing_file) as f:
-        state = json.load(f)
-except:
-    state = {}
-state['last_hook_fire'] = $CURRENT_TIME
-os.makedirs(os.path.dirname(timing_file), exist_ok=True)
-fd, tmp = tempfile.mkstemp(dir=os.path.dirname(timing_file))
-try:
-    with os.fdopen(fd, 'w') as f:
-        json.dump(state, f)
-    os.rename(tmp, timing_file)
-except:
-    try: os.unlink(tmp)
-    except: pass
-" 2>/dev/null
 
 # ============================================================================
 # PHASE 4: Load remote config (cached locally, fallback to defaults)
@@ -266,8 +203,7 @@ except:
 
 REMOTE_CONFIG_FILE="$HOME/.sidequest/remote-config.json"
 RC_ENABLED="true"
-RC_COOLDOWN_MINUTES=20
-RC_DAILY_CAP=5
+RC_DAILY_CAP=8
 
 if [ -f "$REMOTE_CONFIG_FILE" ]; then
   eval "$(python3 -c "
@@ -276,8 +212,7 @@ try:
     with open(sys.argv[1]) as f:
         rc = json.load(f)
     print(f'RC_ENABLED={shlex.quote(str(rc.get(\"enabled\", True)).lower())}')
-    print(f'RC_COOLDOWN_MINUTES={int(rc.get(\"cooldown_minutes\", 20))}')
-    print(f'RC_DAILY_CAP={int(rc.get(\"daily_cap\", 5))}')
+    print(f'RC_DAILY_CAP={int(rc.get(\"daily_cap\", 8))}')
 except:
     pass
 " "$REMOTE_CONFIG_FILE" 2>/dev/null)"
@@ -289,20 +224,11 @@ if [ "$RC_ENABLED" = "false" ]; then
 fi
 
 # ============================================================================
-# PHASE 4.5: Check hard caps (remote-configurable cooldown and daily limit)
+# PHASE 4.5: Daily cap (only hard cap remaining; counter handles spacing)
 # ============================================================================
 
-# Cap 1: Min cooldown between quests (default 20min = 1200s)
-RC_COOLDOWN_SECONDS=$((RC_COOLDOWN_MINUTES * 60))
-TIME_SINCE_LAST_QUEST=$((CURRENT_TIME - LAST_QUEST_SHOWN))
-if [ "$TIME_SINCE_LAST_QUEST" -lt "$RC_COOLDOWN_SECONDS" ]; then
-  exit 0
-fi
-
-# Cap 2: Max quests per day (default 5)
 TODAY=$(date +%Y-%m-%d)
 if [ "$DAILY_RESET_DATE" != "$TODAY" ]; then
-  # New day — reset counter
   DAILY_QUEST_COUNT=0
   DAILY_RESET_DATE="$TODAY"
 fi
@@ -488,7 +414,11 @@ if [ -f "$PLUGIN_VERSION_FILE" ]; then
 fi
 
 APP_VERSION="unknown"
-APP_PLIST="/Applications/SideQuest.app/Contents/Info.plist"
+# App ships under SideQuestApp.app at ~/Applications/. Old path
+# /Applications/SideQuest.app dates from pre-rename planning and never
+# matched a real install, so APP_VERSION was always "unknown" in
+# /events metadata.
+APP_PLIST="$HOME/Applications/SideQuestApp.app/Contents/Info.plist"
 if [ -f "$APP_PLIST" ]; then
   APP_VERSION=$(defaults read "$APP_PLIST" CFBundleShortVersionString 2>/dev/null | tr -d '[:space:]' || echo "unknown")
   [ -z "$APP_VERSION" ] && APP_VERSION="unknown"
