@@ -34,7 +34,7 @@ Rollback procedures and incident response for the SideQuest public release pipel
 
 4. Plugin `session-start` hook will pick up new remote config within the next Claude session per user. Users auto-downgrade silently.
 
-5. If the bad plugin crashed `session-start` itself, push a fix via `plugin-v<bad>+1` and have users run `/sidequest:reinstall`.
+5. If the bad plugin crashed `session-start` itself, push a fix via `plugin-v<bad>+1` and have users run `/sidequest:sq-update`.
 
 ### Scenario 2: Bad App Release
 

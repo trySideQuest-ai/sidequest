@@ -1,5 +1,9 @@
 # Plugin Changelog
 
+## 0.13.1 — 2026-04-28
+
+- chore: remove deprecated alias skills (`/sidequest:login`, `/sidequest:check`, `/sidequest:status`, `/sidequest:feedback`, `/sidequest:settings`, `/sidequest:uninstall`, `/sidequest:reinstall`, `/sidequest:retrigger`, `/sidequest:do-not-disturb`, `/sidequest:earnings`). Use the `sq-` prefixed commands instead. Cleans up the autocomplete list and removes ambiguity.
+
 ## 0.10.1 — 2026-04-27
 
 - feat: capture `client_version` (plugin VERSION + macOS app `CFBundleShortVersionString`) in `/quest` payload so the analytics dashboard can break out plugin/app version distribution.

@@ -1,8 +1,7 @@
 """Verify the public repo contains no live earnings / payout / NIS copy.
 
-The rev-share feature was retired on 2026-04-21. Public-facing docs
-must not advertise it. The retired-stub SKILL.md for /sidequest:earnings
-is the ONE allowed exception.
+The rev-share feature was retired on 2026-04-21. The /sidequest:earnings
+stub was removed in v0.13.1.
 """
 
 import os
@@ -21,13 +20,12 @@ FORBIDDEN = [
     re.compile(r"\bNIS\b"),
 ]
 
-# Files allowed to mention the retired feature.
-# - earnings/SKILL.md is the retired stub itself (must signal retirement).
-# - test files reference the forbidden words as the strings being tested for.
+# Test files reference the forbidden words as the strings being tested for.
+# CHANGELOG records the retirement event historically.
 EXEMPT = {
-    os.path.join(REPO_ROOT, "plugin/skills/earnings/SKILL.md"),
     os.path.join(REPO_ROOT, "plugin/tests/test_no_earnings_references.py"),
     os.path.join(REPO_ROOT, "plugin/tests/test_skill_renames.py"),
+    os.path.join(REPO_ROOT, "plugin/CHANGELOG.md"),
 }
 
 
