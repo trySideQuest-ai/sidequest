@@ -118,7 +118,7 @@ if [ ! -f "$WELCOME_MARKER" ]; then
       "00000000-0000-0000-0000-000000000001" \
       "Welcome to SideQuest" \
       "Side quests appear as you code. Tools matched to what you're building. Pick up or keep grinding." \
-      "https://trysidequest.ai" \
+      "https://github.com/trysidequest-ai/sidequest" \
       "0" "SideQuest" "Onboarding" "" "" 2>/dev/null
     # Cache for /sidequest:sq-retrigger
     mkdir -p "$HOME/.sidequest" 2>/dev/null
@@ -127,7 +127,7 @@ if [ ! -f "$WELCOME_MARKER" ]; then
   "quest_id": "00000000-0000-0000-0000-000000000001",
   "display_text": "Welcome to SideQuest",
   "subtitle": "Side quests appear as you code. Tools matched to what you're building. Pick up or keep grinding.",
-  "tracking_url": "https://trysidequest.ai",
+  "tracking_url": "https://github.com/trysidequest-ai/sidequest",
   "reward_amount": 0,
   "brand_name": "SideQuest",
   "category": "Onboarding"
